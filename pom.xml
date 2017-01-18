@@ -8,27 +8,33 @@
     <artifactId>muddy</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-        <dependencies>
-            <!-- https://mvnrepository.com/artifact/com.vividsolutions/jts -->
-            <dependency>
-                <groupId>com.vividsolutions</groupId>
-                <artifactId>jts</artifactId>
-                <version>1.13</version>
-            </dependency>
+    <properties>
+        <target.jdk>1.8</target.jdk>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
 
-            <dependency>
-                <groupId>de.topobyte</groupId>
-                <artifactId>osm4j-core</artifactId>
-                <version>0.0.18</version>
-            </dependency>
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/com.vividsolutions/jts -->
+        <dependency>
+            <groupId>com.vividsolutions</groupId>
+            <artifactId>jts</artifactId>
+            <version>1.13</version>
+        </dependency>
 
-            <dependency>
-                <groupId>de.topobyte</groupId>
-                <artifactId>osm4j-xml</artifactId>
-                <version>0.0.3</version>
-            </dependency>
+        <dependency>
+            <groupId>de.topobyte</groupId>
+            <artifactId>osm4j-core</artifactId>
+            <version>0.0.18</version>
+        </dependency>
 
-        </dependencies>
+        <dependency>
+            <groupId>de.topobyte</groupId>
+            <artifactId>osm4j-xml</artifactId>
+            <version>0.0.3</version>
+        </dependency>
+
+    </dependencies>
 
     <repositories>
         <repository>
@@ -38,6 +44,22 @@
             </url>
         </repository>
     </repositories>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.5.1</version>
+                    <configuration>
+                        <source>${target.jdk}</source>
+                        <target>${target.jdk}</target>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 
 
 </project>
