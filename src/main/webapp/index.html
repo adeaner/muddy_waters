@@ -12,6 +12,8 @@
 
     <script src="https://unpkg.com/leaflet.pm@0.13.0/dist/leaflet.pm.min.js"></script>
 
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.2/dist/leaflet.css" />
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet.pm@0.13.0/dist/leaflet.pm.css" />
@@ -50,8 +52,35 @@
     mymap.on('pm:create', function(shape) {
         var myBounds = shape.layer.getBounds();
 
-        alert("polygon created, bounds are\nNW: " + myBounds.getNorthWest() + "\nNE: " + myBounds.getNorthEast() + "\nSE: " + myBounds.getSouthEast() + "\nSW: " + myBounds.getSouthWest() );
-    } );
+        alert("polygon created, bounds are\nNW: " + myBounds.getNorthWest() + "\nNE: " + myBounds.getNorthEast() + "\nSE: " + myBounds.getSouthEast() + "\nSW: " + myBounds.getSouthWest());
+
+        var lat = myBounds.getNorthWest().lat;
+        var lng = myBounds.getNorthWest().lng;
+
+        var boundingBox = {
+            upperLeftLatitude: myBounds.getNorthWest().lat,
+            upperLeftLongitude: myBounds.getNorthWest().lng,
+            lowerRightLatitude: myBounds.getSouthEast().lat,
+            lowerRightLongitude: myBounds.getSouthEast().lng
+        };
+
+        var blah = 1
+
+        $.ajax({
+            url: "http://localhost:8080/services/v1/selection",
+            type: "POST",
+            data: JSON.stringify(boundingBox),
+            dataType: "json",
+            contentType:"application/json; charset=utf-8",
+            success: function (data, textStatus, jqXHR) {
+                alert("success");
+            },
+            error: function (jqXHR, textStatus, errorThrown ) {
+                alert("failed - " + textStatus);
+            }
+
+        });
+    });
 
 
 </script>
