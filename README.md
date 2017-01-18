@@ -17,3 +17,7 @@ pixel values massaged with clusters (ex 10 clusters and throw away insignificant
 ipe bbox with spectral angle mapper from above pixel values
 
 display on map
+
+
+run server:
+mvn package wildfly:run

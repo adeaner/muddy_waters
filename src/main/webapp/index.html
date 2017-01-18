@@ -19,11 +19,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.pm@0.13.0/dist/leaflet.pm.css" />
 
 </head>
-<body>
+<body style="background-color: black;">
 
 
 
-<div id="mapid" style="width: 600px; height: 400px;"></div>
+<div id="mapid" style="width: 80%; height: 600px; margin:auto;"></div>
 <script>
 
     var mymap = L.map('mapid').setView([51.505, -0.09], 13);
@@ -52,10 +52,7 @@
     mymap.on('pm:create', function(shape) {
         var myBounds = shape.layer.getBounds();
 
-        alert("polygon created, bounds are\nNW: " + myBounds.getNorthWest() + "\nNE: " + myBounds.getNorthEast() + "\nSE: " + myBounds.getSouthEast() + "\nSW: " + myBounds.getSouthWest());
-
-        var lat = myBounds.getNorthWest().lat;
-        var lng = myBounds.getNorthWest().lng;
+        // alert("polygon created, bounds are\nNW: " + myBounds.getNorthWest() + "\nNE: " + myBounds.getNorthEast() + "\nSE: " + myBounds.getSouthEast() + "\nSW: " + myBounds.getSouthWest());
 
         var boundingBox = {
             upperLeftLatitude: myBounds.getNorthWest().lat,
@@ -64,8 +61,6 @@
             lowerRightLongitude: myBounds.getSouthEast().lng
         };
 
-        var blah = 1
-
         $.ajax({
             url: "http://localhost:8080/services/v1/selection",
             type: "POST",
@@ -73,7 +68,7 @@
             dataType: "json",
             contentType:"application/json; charset=utf-8",
             success: function (data, textStatus, jqXHR) {
-                alert("success");
+                alert("Successfully saved coordinates");
             },
             error: function (jqXHR, textStatus, errorThrown ) {
                 alert("failed - " + textStatus);
