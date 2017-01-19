@@ -45,7 +45,7 @@ public class SampleApp {
         getOverlay(bbox);
     }
 
-    private static void getOverlay(Double[] bbox) throws IOException {
+    public static void getOverlay(Double[] bbox) throws IOException {
 
 
         // upper left lat/lon, lower right lat/lon
@@ -157,7 +157,7 @@ public class SampleApp {
      * @return string of an IDAHO id
      * @throws IOException
      */
-    private static String getIdahoId(String wkt) throws IOException {
+    public static String getIdahoId(String wkt) throws IOException {
         CatalogManager catalogManager = new CatalogManager();
 
         //
@@ -184,7 +184,7 @@ public class SampleApp {
         return ""; //null
     }
 
-    private static List<double[]> getSamplePixels(String idaho_id_multi, Map<Long, OsmNode> nodesById) throws IOException {
+    public static List<double[]> getSamplePixels(String idaho_id_multi, Map<Long, OsmNode> nodesById) throws IOException {
         // Get idaho chip
         String baseUrl = "http://idaho.geobigdata.io/v1";
         GBDXAuthManager gbdxAuthManager = new GBDXAuthManager();
