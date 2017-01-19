@@ -36,7 +36,7 @@ import org.xml.sax.SAXException;
 /**
  * Hello world!
  */
-public class SampleApp {
+public class BoundingBoxWaterMask {
     public static void main(String[] args) throws ParserConfigurationException,
             SAXException, IOException {
 
