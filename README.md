@@ -19,5 +19,7 @@ ipe bbox with spectral angle mapper from above pixel values
 display on map
 
 
+http://overpass-turbo.eu/
+http://wiki.openstreetmap.org/wiki/Map_Features#Waterway
 run server:
 mvn package wildfly:run
