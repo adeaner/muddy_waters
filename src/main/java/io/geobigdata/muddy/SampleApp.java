@@ -3,6 +3,7 @@ package io.geobigdata.muddy;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferUShort;
+import java.awt.image.Raster;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
@@ -16,6 +17,9 @@ import de.topobyte.osm4j.core.model.iface.EntityType;
 import de.topobyte.osm4j.core.model.iface.OsmNode;
 import de.topobyte.osm4j.core.model.iface.OsmWay;
 import de.topobyte.osm4j.xml.dynsax.OsmXmlIterator;
+import org.apache.commons.math3.ml.clustering.CentroidCluster;
+import org.apache.commons.math3.ml.clustering.Cluster;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.xml.sax.SAXException;
 import com.digitalglobe.gbdx.tools.auth.GBDXAuthManager;
 
@@ -44,54 +48,47 @@ public class SampleApp {
 
         String idaho_id_multi = getIdahoId(wkt);
 
+        List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
 
-        // Get idaho chip
-        String baseUrl = "http://idaho.geobigdata.io/v1";
-        GBDXAuthManager gbdxAuthManager = new GBDXAuthManager();
+        System.out.println(sample_pixels);
 
-        String pathUrl = String.format("/chip/centroid/idaho-images/%s?", idaho_id_multi);
+        List<ClusterablePixel> clusterInput = new ArrayList<>();
 
-        List pixelvalues = new ArrayList();
-        // Iterate nodes to get pixel values
-        for (OsmNode value : nodesById.values()) {
-
-            Double lat = value.getLatitude();
-            Double lon = value.getLongitude();
-
-
-            String idaho_query = String.format("lat=%s&long=%s" +
-                    "&width=1&height=1&resolution=0.3&bands=7,6,5,4,3,2,1,0&format=tif" +
-                    "&token=%s", lat, lon, gbdxAuthManager.getAccessToken());
-
-            BufferedImage img = null;
-
-            try {
-//                Iterator<ImageReader> readers = ImageIO.getImageReadersBySuffix("TIF");
-//                while(readers.hasNext()){
-//                    ImageReader reader = readers.next();
-//                    System.out.println(reader.getClass().getName());
-//                }
-
-                URL idaho_url = new URL(baseUrl + pathUrl + idaho_query);
-                InputStream input = idaho_url.openStream();
-
-                img = ImageIO.read(input);
-
-
-            } catch (IOException e) {
-                System.out.println(e);
-            }
-
-            try {
-                final short[] pixels = ((DataBufferUShort) img.getRaster().getDataBuffer()).getData();
-                pixelvalues.add(pixels);
-            } catch (NullPointerException e) {
-                System.out.println(e);
-            }
-
+        for (double[] pixel : sample_pixels) {
+            clusterInput.add( new ClusterablePixel(pixel) );
         }
 
-        System.out.println(pixelvalues);
+        // initialize a new clustering algorithm.
+        // we use KMeans++ with 10 clusters and 10000 iterations maximum.
+        // we did not specify a distance measure; the default (euclidean distance) is used.
+        long start = System.currentTimeMillis();
+        System.out.println("Computing clusters...");
+        //DBSCANClusterer<ClusterablePixel> clusterer = new DBSCANClusterer<ClusterablePixel>(10, 50);
+        KMeansPlusPlusClusterer<ClusterablePixel> clusterer = new KMeansPlusPlusClusterer<ClusterablePixel>(10, 1000);
+        List<CentroidCluster<ClusterablePixel>> clusterResults = clusterer.cluster(clusterInput);
+        long end = System.currentTimeMillis();
+        System.out.println("Time to compute clusters: " + (end - start) + " ms.");
+
+        // output the clusters
+//        System.out.print("[");
+        List<double[]> centroid_clusters = new ArrayList();
+
+        for (int i = 0; i < clusterResults.size(); i++) {
+            Cluster<ClusterablePixel> cluster = clusterResults.get(i);
+            if (cluster instanceof CentroidCluster) {
+                CentroidCluster centroidCluster = (CentroidCluster) cluster;
+                double[] point = centroidCluster.getCenter().getPoint();
+                // if size of centroid cluster is >= size clusterInput * 10% then add to centroid_cluster list
+                if (centroidCluster.getPoints().size() >= clusterInput.size() * 0.10){
+                    centroid_clusters.add(point);
+                }
+
+//                String centroid = Arrays.toString(centroidCluster.getCenter().getPoint());
+//                System.out.print(centroid);
+            }
+        }
+        System.out.println(centroid_clusters);
+
     }
 
     /**
@@ -175,5 +172,70 @@ public class SampleApp {
         // sort results, most recent
 
         return ""; //null
+    }
+
+    private static List<double[]> getSamplePixels(String idaho_id_multi, Map<Long, OsmNode> nodesById) throws IOException {
+        // Get idaho chip
+        String baseUrl = "http://idaho.geobigdata.io/v1";
+        GBDXAuthManager gbdxAuthManager = new GBDXAuthManager();
+
+        String pathUrl = String.format("/chip/centroid/idaho-images/%s?", idaho_id_multi);
+
+        List<double[]> pixelvalues = new ArrayList();
+        // Iterate nodes to get pixel values
+        for (OsmNode value : nodesById.values()) {
+
+            Double lat = value.getLatitude();
+            Double lon = value.getLongitude();
+
+
+            String idaho_query = String.format("lat=%s&long=%s" +
+                    "&width=1&height=1&resolution=0.3&bands=7,6,5,4,3,2,1,0&format=tif" +
+                    "&token=%s", lat, lon, gbdxAuthManager.getAccessToken());
+
+            BufferedImage img = null;
+
+            try {
+//                Iterator<ImageReader> readers = ImageIO.getImageReadersBySuffix("TIF");
+//                while(readers.hasNext()){
+//                    ImageReader reader = readers.next();
+//                    System.out.println(reader.getClass().getName());
+//                }
+
+                URL idaho_url = new URL(baseUrl + pathUrl + idaho_query);
+                InputStream input = idaho_url.openStream();
+
+                img = ImageIO.read(input);
+
+
+            } catch (IOException e) {
+                System.out.println(e);
+            }
+
+            try {
+                Raster raster_pixel = img.getData();
+                double[] pixel = new double[8];
+
+                raster_pixel.getPixel(0, 0, pixel);
+
+                //img.getData()<- interface method
+//                short[] pixels = ((DataBufferUShort) img.getRaster().getDataBuffer()).getData(); //img.getData()<- interface method
+
+                double sum = 0;
+                for (double i : pixel) {
+                    sum += i;
+                }
+
+                if (sum > 0) {
+                    pixelvalues.add(pixel);
+                }
+
+
+            } catch (NullPointerException e) {
+                System.out.println(e);
+            }
+
+        }
+        return pixelvalues;
     }
 }
