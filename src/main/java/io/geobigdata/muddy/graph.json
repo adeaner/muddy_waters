@@ -1,0 +1,141 @@
+{
+  "id": "84d957c1-2974-42c7-be69-2120b11091b4",
+  "edges": [
+    {
+      "id": "e0be7536-1889-44d7-880b-b1f4c1395934",
+      "index": 1,
+      "source": "IdahoRead_nas220",
+      "destination": "GridOrthorectify_0bray5"
+    },
+    {
+      "id": "f0ca9801-6e49-4a6e-9531-4c8293ec8995",
+      "index": 1,
+      "source": "SpectralAngle_mz58by",
+      "destination": "BandSelect_d3i3un"
+    },
+    {
+      "id": "b09b7d15-3f57-4323-b50d-59ffc0e81f88",
+      "index": 1,
+      "source": "GridOrthorectify_0bray5",
+      "destination": "SpectralAngle_mz58by"
+    },
+    {
+      "id": "8fd20f2c-82af-4d94-8423-5f238281e7eb",
+      "index": 1,
+      "source": "SpectralAngle_mz58by",
+      "destination": "BandSelect_tuohfy"
+    },
+    {
+      "id": "03724ffd-7c29-452d-b913-7dcde8e7301d",
+      "index": 1,
+      "source": "BandSelect_d3i3un",
+      "destination": "Min_5eh8u8"
+    },
+    {
+      "id": "425f4064-8b48-4347-9376-5219708a7a72",
+      "index": 1,
+      "source": "BandSelect_vxd926",
+      "destination": "Min_l6p5om"
+    },
+    {
+      "id": "9f69568a-ff96-418d-adfe-d1226886eb97",
+      "index": 2,
+      "source": "BandSelect_tuohfy",
+      "destination": "Min_5eh8u8"
+    },
+    {
+      "id": "3f5878a8-6dc2-484e-9bc6-728b0a4401c0",
+      "index": 2,
+      "source": "Min_5eh8u8",
+      "destination": "Min_l6p5om"
+    },
+    {
+      "id": "d0d430eb-972c-47ce-a2fd-5e976d2074fd",
+      "index": 1,
+      "source": "SpectralAngle_mz58by",
+      "destination": "BandSelect_vxd926"
+    },
+    {
+      "id": "674be3bb-f3af-4520-abbd-6393f2ec01e2",
+      "index": 1,
+      "source": "Min_l6p5om",
+      "destination": "Binarize_kerg68"
+    },
+    {
+      "id": "a39f880c-a5b3-4ea0-83c7-c964801c6fe3",
+      "index": 1,
+      "source": "Binarize_kerg68",
+      "destination": "Invert_a2hsnk"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "IdahoRead_nas220",
+      "operator": "IdahoRead",
+      "parameters": {
+        "bucketName": "idaho-images",
+        "imageId": "4bb1dfb3-e252-414b-8f52-a41ce0ef774d",
+        "objectStore": "S3"
+      }
+    },
+    {
+      "id": "GridOrthorectify_0bray5",
+      "operator": "GridOrthorectify",
+      "parameters": {
+        "Interpolation": "INTERP_BILINEAR",
+        "Sensor Model": "",
+        "Warp Specification": ""
+      }
+    },
+    {
+      "id": "SpectralAngle_mz58by",
+      "operator": "SpectralAngle",
+      "parameters": {
+        "signatures": "[[48.77272727272727,147.63636363636363,98.5909090909091,154.54545454545453,122.81818181818181,229.45454545454547,232.72727272727272,166.13636363636363],[30.75, 85.03125, 62.34375, 125.859375, 102.859375, 206.0, 220.640625, 161.453125],[37.13559322033898, 102.84745762711864, 77.20338983050847, 144.88135593220338, 115.66101694915254, 224.98305084745763, 230.20338983050848, 164.5084745762712]]"
+      }
+    },
+    {
+      "id": "BandSelect_vxd926",
+      "operator": "BandSelect",
+      "parameters": {
+        "bandIndices": "[2]"
+      }
+    },
+    {
+      "id": "Binarize_kerg68",
+      "operator": "Binarize",
+      "parameters": {
+        "threshold": "0.1"
+      }
+    },
+    {
+      "id": "BandSelect_d3i3un",
+      "operator": "BandSelect",
+      "parameters": {
+        "bandIndices": "[0]"
+      }
+    },
+    {
+      "id": "Min_l6p5om",
+      "operator": "Min",
+      "parameters": {}
+    },
+    {
+      "id": "BandSelect_tuohfy",
+      "operator": "BandSelect",
+      "parameters": {
+        "bandIndices": "[1]"
+      }
+    },
+    {
+      "id": "Min_5eh8u8",
+      "operator": "Min",
+      "parameters": {}
+    },
+    {
+      "id": "Invert_a2hsnk",
+      "operator": "Invert",
+      "parameters": {}
+    }
+  ]
+}
