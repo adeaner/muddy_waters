@@ -2,15 +2,26 @@ package io.geobigdata.muddy;
 
 
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferUShort;
 import java.awt.image.Raster;
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
-import java.util.*;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import javax.imageio.ImageIO;
 import javax.xml.parsers.ParserConfigurationException;
 
+import com.digitalglobe.gbdx.tools.auth.GBDXAuthManager;
+import com.digitalglobe.gbdx.tools.catalog.CatalogManager;
+import com.digitalglobe.gbdx.tools.catalog.model.Record;
+import com.digitalglobe.gbdx.tools.catalog.model.SearchRequest;
+import com.digitalglobe.gbdx.tools.catalog.model.SearchResponse;
 import de.topobyte.osm4j.core.access.OsmIterator;
 import de.topobyte.osm4j.core.model.iface.EntityContainer;
 import de.topobyte.osm4j.core.model.iface.EntityType;
@@ -21,14 +32,6 @@ import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.xml.sax.SAXException;
-import com.digitalglobe.gbdx.tools.auth.GBDXAuthManager;
-
-import java.io.IOException;
-
-import com.digitalglobe.gbdx.tools.catalog.CatalogManager;
-import com.digitalglobe.gbdx.tools.catalog.model.Record;
-import com.digitalglobe.gbdx.tools.catalog.model.SearchRequest;
-import com.digitalglobe.gbdx.tools.catalog.model.SearchResponse;
 
 /**
  * Hello world!
@@ -37,8 +40,15 @@ public class SampleApp {
     public static void main(String[] args) throws ParserConfigurationException,
             SAXException, IOException {
 
-        // upper left lat/lon, lower right lat/lon
         Double bbox[] = {39.84670129520201, -104.99307632446288, 39.801810432481645, -104.92518424987793};
+
+        getOverlay(bbox);
+    }
+
+    private static void getOverlay(Double[] bbox) throws IOException {
+
+
+        // upper left lat/lon, lower right lat/lon
         //BoundingBox upperLeftLatitude=39.92843137829837, upperLeftLongitude=-105.05199104547503, lowerRightLatitude=39.89999167197872, lowerRightLongitude=-104.9971452355385
         // counter clockwise lon/ lat
         String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
