@@ -11,12 +11,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.imageio.ImageIO;
 import javax.media.jai.JAI;
@@ -28,6 +23,7 @@ import com.digitalglobe.gbdx.tools.catalog.model.Record;
 import com.digitalglobe.gbdx.tools.catalog.model.SearchRequest;
 import com.digitalglobe.gbdx.tools.catalog.model.SearchResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import de.topobyte.osm4j.core.access.OsmIterator;
 import de.topobyte.osm4j.core.model.iface.EntityContainer;
 import de.topobyte.osm4j.core.model.iface.EntityType;
@@ -35,6 +31,7 @@ import de.topobyte.osm4j.core.model.iface.OsmNode;
 import de.topobyte.osm4j.core.model.iface.OsmWay;
 import de.topobyte.osm4j.xml.dynsax.OsmXmlIterator;
 import io.geobigdata.ipe.IPEGraph;
+import io.geobigdata.ipe.IPEGraphNode;
 import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
@@ -56,16 +53,17 @@ public class BoundingBoxWaterMask {
     public static void getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException {
 
         // upper left lat/lon, lower right lat/lon
-        //BoundingBox upperLeftLatitude=39.92843137829837, upperLeftLongitude=-105.05199104547503, lowerRightLatitude=39.89999167197872, lowerRightLongitude=-104.9971452355385
+        // BoundingBox upperLeftLatitude=39.92843137829837, upperLeftLongitude=-105.05199104547503, lowerRightLatitude=39.89999167197872, lowerRightLongitude=-104.9971452355385
         // counter clockwise lon/ lat
-        String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
-
-        // Get water features from OSM
+//        String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
+//
+//        // Get water features from OSM
         Map<Long, OsmNode> nodesById = getFeatures(bbox);
 
-        // Get "best" idaho image
-        String idaho_id_multi = getIdahoId(wkt);
+//        // Get "best" idaho image
+//        String idaho_id_multi = getIdahoId(wkt);
 
+        String idaho_id_multi = "4bb1dfb3-e252-414b-8f52-a41ce0ef774d";
         // Get sample pixels of water features out of idaho image
         List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
 
@@ -75,7 +73,11 @@ public class BoundingBoxWaterMask {
         List<double[]> centroid_clusters = clusterPixels(sample_pixels);
 
         // Create water mask
-        RenderNode(idaho_id_multi, centroid_clusters);
+        String spectral_angle_signatures = new Gson().toJson(centroid_clusters);
+
+        String temp_spectra = "[[163.78523489932886,227.08053691275168,218.26174496644296,111.83221476510067,139.04697986577182,74.97986577181209,104.00671140939598,37.080536912751676],[224.24137931034483,392.7241379310345,506.0,334.1034482758621,501.6551724137931,322.1034482758621,590.6551724137931,273.6896551724138],[180.9655172413793,274.41379310344826,299.82758620689657,175.51724137931035,239.89655172413794,155.93103448275863,273.9655172413793,126.0]]";
+        RenderNode(idaho_id_multi, temp_spectra);
+//        RenderNode(idaho_id_multi, spectral_angle_signatures);
     }
 
     /**
@@ -184,7 +186,7 @@ public class BoundingBoxWaterMask {
 
 
             String idaho_query = String.format("lat=%s&long=%s" +
-                    "&width=1&height=1&resolution=0.3&bands=7,6,5,4,3,2,1,0&format=tif" +
+                    "&width=1&height=1&resolution=0.3&bands=0,1,2,3,4,5,6,7&format=tif" +
                     "&token=%s", lat, lon, gbdxAuthManager.getAccessToken());
 
             BufferedImage img = null;
@@ -247,9 +249,16 @@ public class BoundingBoxWaterMask {
         // we did not specify a distance measure; the default (euclidean distance) is used.
         long start = System.currentTimeMillis();
         System.out.println("Computing clusters...");
-        //DBSCANClusterer<ClusterablePixel> clusterer = new DBSCANClusterer<ClusterablePixel>(10, 50);
-        KMeansPlusPlusClusterer<ClusterablePixel> clusterer = new KMeansPlusPlusClusterer<ClusterablePixel>(10, 1000);
+        KMeansPlusPlusClusterer<ClusterablePixel> clusterer = new KMeansPlusPlusClusterer<>(10, 1000);
         List<CentroidCluster<ClusterablePixel>> clusterResults = clusterer.cluster(clusterInput);
+
+        Comparator<CentroidCluster<ClusterablePixel>> sort_clusters =
+                (CentroidCluster<ClusterablePixel> o1, CentroidCluster<ClusterablePixel> o2)->(Integer.valueOf(o2.getPoints().size()).compareTo(Integer.valueOf(o1.getPoints().size()) ));
+
+        Collections.sort(clusterResults, sort_clusters);
+
+        List<CentroidCluster<ClusterablePixel>> three_largestclusters = clusterResults.subList(clusterResults.size() -3, clusterResults.size());
+
         long end = System.currentTimeMillis();
         System.out.println("Time to compute clusters: " + (end - start) + " ms.");
 
@@ -257,21 +266,23 @@ public class BoundingBoxWaterMask {
 //        System.out.print("[");
         List<double[]> centroid_clusters = new ArrayList();
 
-        for (int i = 0; i < clusterResults.size(); i++) {
-            Cluster<ClusterablePixel> cluster = clusterResults.get(i);
+        for (int i = 0; i < three_largestclusters.size(); i++) {
+            Cluster<ClusterablePixel> cluster = three_largestclusters.get(i);
             if (cluster instanceof CentroidCluster) {
                 CentroidCluster centroidCluster = (CentroidCluster) cluster;
                 double[] point = centroidCluster.getCenter().getPoint();
                 // if size of centroid cluster is >= size clusterInput * 10% then add to centroid_cluster list
-                if (centroidCluster.getPoints().size() >= clusterInput.size() * 0.10) {
-                    centroid_clusters.add(point);
-                }
+
+//                if (centroidCluster.getPoints().size() >= clusterInput.size() * 0.10) {
+//                    centroid_clusters.add(point);
+//                }
+                centroid_clusters.add(point);
 
 //                String centroid = Arrays.toString(centroidCluster.getCenter().getPoint());
 //                System.out.print(centroid);
             }
         }
-        System.out.println(centroid_clusters);
+        System.out.println(centroid_clusters.toString());
 
         return centroid_clusters;
     }
@@ -286,27 +297,44 @@ public class BoundingBoxWaterMask {
      * - threshold/ binarize, mask of land, invert, mask of water
      * overlay
      */
-    private static String RenderNode(String idaho_id, List<double[]> spectral_angles) throws
+    private static String RenderNode(String idaho_id, String spectral_angle_signatures) throws
             ParserConfigurationException, ParseException, IOException {
-
         ObjectMapper om = new ObjectMapper();
 
-        File file = new File("/tmp/graph.json");
+        File file = new File("/Users/DGashleydeaner/Documents/git/muddy_waters/src/main/java/io/geobigdata/muddy/graph.json");
 
         IPEGraph graph = om.readValue(file, IPEGraph.class);
 
         //update idaho id
+        Map<String, String> idaho_read_parameters = new HashMap<>();
+        idaho_read_parameters.put("bucketName", "idaho-images");
+        idaho_read_parameters.put("imageId", idaho_id);
+        idaho_read_parameters.put("objectStore", "S3");
+
+        for (IPEGraphNode node : graph.getNodes()){
+            if (node.getId().equals("IdahoRead_nas220")) {
+                node.setParameters(idaho_read_parameters);
+            }
+        }
 
         //update spectral angles
+        Map<String, String> spectral_angle_parameters = new HashMap<>();
+        spectral_angle_parameters.put("signatures", spectral_angle_signatures);
+
+        for (IPEGraphNode node : graph.getNodes()){
+            if (node.getId().equals("SpectralAngle_mz58by")) {
+                node.setParameters(spectral_angle_parameters);
+            }
+        }
 
         RenderedImage image = graph.getVertexAsRenderedOp("Invert_a2hsnk");
 
         ParameterBlock pbC = new ParameterBlock( );
         pbC.addSource(image);
-        pbC.add(2048f);
-        pbC.add(2048f);
-        pbC.add(2048f);
-        pbC.add(2048f);
+        pbC.add(9311f); //upper left x
+        pbC.add(5652f); //upper left y
+        pbC.add(5000f);
+        pbC.add(5000f);
         RenderedImage crop = JAI.create("Crop", pbC);
 
         System.out.println(image.getMinX()+" "+image.getMinY()+"  "+image.getWidth()+" "+image.getHeight());
