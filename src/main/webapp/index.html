@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Quick Start - Leaflet</title>
+    <title>Muddy Waters</title>
 
-    <meta charset="utf-8" />
+    <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
 
     <script src="https://unpkg.com/leaflet@1.0.2/dist/leaflet.js"></script>
 
@@ -14,19 +12,37 @@
 
     <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.2/dist/leaflet.css" />
+    <script src="js/jquery.blockUI.js"></script>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.pm@0.13.0/dist/leaflet.pm.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.2/dist/leaflet.css"/>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.pm@0.13.0/dist/leaflet.pm.css"/>
 
 </head>
 <body style="background-color: black;">
 
+<div id="mask" style="position:fixed;width:100%;height:100%;background:rgba(0,0,0,.3);top:0;left:0;display:none;"></div>
 
-
-<div id="mapid" style="width: 80%; height: 600px; margin:auto;"></div>
+<div id="mapid" style="padding:25px; width: 80%; height: 600px; margin:auto;"></div>
 <script>
+    var token = null;
 
-    var mymap = L.map('mapid').setView([39.894197,-104.983431], 13);
+    $(document).ajaxStart($.blockUI({message: 'Loading...'})).ajaxStop($.unblockUI);
+
+    $(document).ready(function () {
+        $.ajax({
+            url: "http://localhost:8080/services/v1/selection/getToken",
+            type: "GET",
+            success: function (data, textStatus, jqXHR) {
+                token = data.token;
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                alert("failed - " + textStatus);
+            }
+        });
+    });
+
+    var mymap = L.map('mapid').setView([39.894197, -104.983431], 13);
 
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpandmbXliNDBjZWd2M2x6bDk3c2ZtOTkifQ._QA7i5Mpkd_m30IGElHziw', {
         maxZoom: 18,
@@ -49,7 +65,7 @@
     // add leaflet.pm controls to the map
     mymap.pm.addControls(options);
 
-    mymap.on('pm:create', function(shape) {
+    mymap.on('pm:create', function (shape) {
         var myBounds = shape.layer.getBounds();
 
         // alert("polygon created, bounds are\nNW: " + myBounds.getNorthWest() + "\nNE: " + myBounds.getNorthEast() + "\nSE: " + myBounds.getSouthEast() + "\nSW: " + myBounds.getSouthWest());
@@ -66,14 +82,13 @@
             type: "POST",
             data: JSON.stringify(boundingBox),
             dataType: "json",
-            contentType:"application/json; charset=utf-8",
+            contentType: "application/json; charset=utf-8",
             success: function (data, textStatus, jqXHR) {
-                alert("Successfully saved coordinates");
+                alert("success");
             },
-            error: function (jqXHR, textStatus, errorThrown ) {
+            error: function (jqXHR, textStatus, errorThrown) {
                 alert("failed - " + textStatus);
             }
-
         });
     });
 

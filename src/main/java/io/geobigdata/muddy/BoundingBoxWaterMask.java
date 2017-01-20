@@ -4,18 +4,21 @@ package io.geobigdata.muddy;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
-import java.awt.image.renderable.ParameterBlock;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Array;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
-import javax.media.jai.JAI;
 import javax.xml.parsers.ParserConfigurationException;
 
 import com.digitalglobe.gbdx.tools.auth.GBDXAuthManager;
@@ -56,7 +59,7 @@ public class BoundingBoxWaterMask {
 
     public static void getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException, com.vividsolutions.jts.io.ParseException {
 
-        boolean debug = true;
+        boolean debug = false;
 
         String idaho_id_multi;
         String spectral_angle_signatures;
@@ -202,6 +205,9 @@ public class BoundingBoxWaterMask {
 
         List<double[]> pixelvalues = new ArrayList();
         // Iterate nodes to get pixel values
+
+        System.out.println( "got " + nodesById.values().size() + " nodes");
+        int nodeNumber = 0;
         for (OsmNode value : nodesById.values()) {
 
             Double lat = value.getLatitude();
@@ -216,6 +222,9 @@ public class BoundingBoxWaterMask {
                 URL idaho_url = new URL(baseUrl + pathUrl + idaho_query);
                 InputStream input = idaho_url.openStream();
                 img = ImageIO.read(input);
+                input.close();
+
+                System.out.println("got node " + nodeNumber++ );
 
             } catch (IOException e) {
                 System.out.println(e);
