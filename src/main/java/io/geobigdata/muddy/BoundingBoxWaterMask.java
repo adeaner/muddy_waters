@@ -8,6 +8,7 @@ import java.awt.image.renderable.ParameterBlock;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Array;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.text.ParseException;
@@ -24,6 +25,9 @@ import com.digitalglobe.gbdx.tools.catalog.model.SearchRequest;
 import com.digitalglobe.gbdx.tools.catalog.model.SearchResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.io.WKTReader;
+import com.vividsolutions.jts.io.WKTWriter;
 import de.topobyte.osm4j.core.access.OsmIterator;
 import de.topobyte.osm4j.core.model.iface.EntityContainer;
 import de.topobyte.osm4j.core.model.iface.EntityType;
@@ -43,27 +47,43 @@ import org.xml.sax.SAXException;
  */
 public class BoundingBoxWaterMask {
     public static void main(String[] args) throws ParserConfigurationException,
-            SAXException, IOException, ParseException {
+            SAXException, IOException, ParseException, com.vividsolutions.jts.io.ParseException{
 
         Double bbox[] = {39.84670129520201, -104.99307632446288, 39.801810432481645, -104.92518424987793};
 
         getOverlay(bbox);
     }
 
-    public static void getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException {
+    public static void getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException, com.vividsolutions.jts.io.ParseException {
 
         // upper left lat/lon, lower right lat/lon
         // BoundingBox upperLeftLatitude=39.92843137829837, upperLeftLongitude=-105.05199104547503, lowerRightLatitude=39.89999167197872, lowerRightLongitude=-104.9971452355385
         // counter clockwise lon/ lat
-//        String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
-//
-//        // Get water features from OSM
+        String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
+
+        WKTReader reader = new WKTReader();
+        Geometry geometry = reader.read(wkt);
+        geometry.setSRID(4326);
+
+
+        // Get water features from OSM
         Map<Long, OsmNode> nodesById = getFeatures(bbox);
 
-//        // Get "best" idaho image
-//        String idaho_id_multi = getIdahoId(wkt);
+        // Get "best" idaho image
+        String[] idaho_info = getIdahoId(wkt);
+        String idaho_id_multi = idaho_info[0];
+        String idaho_id_footprint = idaho_info[1];
+        //POLYGON ((-105.11402685 39.94873994, -104.91450355 39.92789849, -104.91500157 39.80021883, -105.11321021 39.82066176, -105.11402685 39.94873994))
 
-        String idaho_id_multi = "4bb1dfb3-e252-414b-8f52-a41ce0ef774d";
+        Geometry idaho_id_geometry = reader.read(idaho_id_footprint);
+        idaho_id_geometry.setSRID(4326);
+
+        Geometry overlapping_geometry = idaho_id_geometry.intersection(geometry);
+
+        WKTWriter writer = new WKTWriter();
+
+        String overlapping_wkt = writer.write(overlapping_geometry);
+
         // Get sample pixels of water features out of idaho image
         List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
 
@@ -75,9 +95,11 @@ public class BoundingBoxWaterMask {
         // Create water mask
         String spectral_angle_signatures = new Gson().toJson(centroid_clusters);
 
-        String temp_spectra = "[[163.78523489932886,227.08053691275168,218.26174496644296,111.83221476510067,139.04697986577182,74.97986577181209,104.00671140939598,37.080536912751676],[224.24137931034483,392.7241379310345,506.0,334.1034482758621,501.6551724137931,322.1034482758621,590.6551724137931,273.6896551724138],[180.9655172413793,274.41379310344826,299.82758620689657,175.51724137931035,239.89655172413794,155.93103448275863,273.9655172413793,126.0]]";
-        RenderNode(idaho_id_multi, temp_spectra);
-//        RenderNode(idaho_id_multi, spectral_angle_signatures);
+        String temp_idaho_id_multi = "4bb1dfb3-e252-414b-8f52-a41ce0ef774d";
+        String temp_spectra = "[[161.69565217391303,221.07246376811594,206.91304347826087,103.53623188405797,126.71014492753623,62.7536231884058,85.27536231884058,31.028985507246375],[164.43103448275863,230.3793103448276,225.25862068965517,115.8103448275862,145.56896551724137,78.65517241379311,106.10344827586206,37.53448275862069],[168.63636363636363,237.22727272727272,235.4090909090909,127.36363636363636,160.54545454545453,103.63636363636364,157.22727272727272,54.86363636363637]]";
+        String temp_overlapping_wkt = "POLYGON ((-104.93042908658934 39.80181, -104.993076 39.80827130494398, -104.993076 39.846701, -104.925184 39.846701, -104.925184 39.80181, -104.93042908658934 39.80181))";
+//        RenderNode(temp_idaho_id_multi, temp_spectra, temp_overlapping_wkt);
+        RenderNode(idaho_id_multi, spectral_angle_signatures, overlapping_wkt);
     }
 
     /**
@@ -136,7 +158,7 @@ public class BoundingBoxWaterMask {
      * @return string of an IDAHO id
      * @throws IOException
      */
-    public static String getIdahoId(String wkt) throws IOException {
+    public static String[] getIdahoId(String wkt) throws IOException {
         CatalogManager catalogManager = new CatalogManager();
 
         //
@@ -151,16 +173,17 @@ public class BoundingBoxWaterMask {
         SearchResponse response = catalogManager.search(searchRequest);
 
         System.out.println("got a total of " + response.getStats().getRecordsReturned() + " records returned");
+        // this for loop is broken...
         for (Record nextRecord : response.getResults()) {
             System.out.println("got record id of \"" + nextRecord.getIdentifier() + "\" of type \"" + nextRecord.getType() + "\"");
 
-            return nextRecord.getIdentifier();
+            return new String[] {nextRecord.getIdentifier(), nextRecord.getProperties().get("footprintWkt")};
 
         }
 
         // sort results, most recent
 
-        return ""; //null
+        return new String[] {}; //null
     }
 
     /**
@@ -257,7 +280,7 @@ public class BoundingBoxWaterMask {
 
         Collections.sort(clusterResults, sort_clusters);
 
-        List<CentroidCluster<ClusterablePixel>> three_largestclusters = clusterResults.subList(clusterResults.size() -3, clusterResults.size());
+        List<CentroidCluster<ClusterablePixel>> three_largestclusters = clusterResults.subList(0, 3);
 
         long end = System.currentTimeMillis();
         System.out.println("Time to compute clusters: " + (end - start) + " ms.");
@@ -297,7 +320,7 @@ public class BoundingBoxWaterMask {
      * - threshold/ binarize, mask of land, invert, mask of water
      * overlay
      */
-    private static String RenderNode(String idaho_id, String spectral_angle_signatures) throws
+    private static String RenderNode(String idaho_id, String spectral_angle_signatures, String overlapping_wkt) throws
             ParserConfigurationException, ParseException, IOException {
         ObjectMapper om = new ObjectMapper();
 
@@ -327,19 +350,29 @@ public class BoundingBoxWaterMask {
             }
         }
 
+        // update geo crop
+        Map<String, String> crop_parameters = new HashMap<>();
+        crop_parameters.put("geospatialWKT", overlapping_wkt);
+
+        for (IPEGraphNode node : graph.getNodes()){
+            if (node.getId().equals("GeospatialCrop_aqe9xq")) {
+                node.setParameters(crop_parameters);
+            }
+        }
+
         RenderedImage image = graph.getVertexAsRenderedOp("Invert_a2hsnk");
 
-        ParameterBlock pbC = new ParameterBlock( );
-        pbC.addSource(image);
-        pbC.add(9311f); //upper left x
-        pbC.add(5652f); //upper left y
-        pbC.add(5000f);
-        pbC.add(5000f);
-        RenderedImage crop = JAI.create("Crop", pbC);
+//        ParameterBlock pbC = new ParameterBlock( );
+//        pbC.addSource(image);
+//        pbC.add(9311f); //upper left x
+//        pbC.add(5652f); //upper left y
+//        pbC.add(5000f);
+//        pbC.add(5000f);
+//        RenderedImage crop = JAI.create("Crop", pbC);
 
         System.out.println(image.getMinX()+" "+image.getMinY()+"  "+image.getWidth()+" "+image.getHeight());
-        ImageIO.write(crop, "TIF", new File("file.tif"));
+        ImageIO.write(image, "PNG", new File("file.png"));
 
-        return "file.tif";
+        return "file.png";
     }
 }
