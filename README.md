@@ -1,25 +1,29 @@
-# muddy_waters
+# Muddy Waters
+Ashley Deaner & Scott Dunbar
 Jan 2017 Hackathon
 
+Bounty: Water detection app: draw a box, show me water	
 
-given a bbox
+1. leaflet map -> draw a bounding box 
 
-feature query osm
+2. Get water features from Open Street Map feature server (http://overpass-turbo.eu/, http://wiki.openstreetmap.org/wiki/Map_Features#Waterway)
 
-get idaho catid(s) from catalog/v1
+3. Get "the best" idaho image id from catalog/v1 (WV03 with low cloud cover)
 
-get pixel values from feature lat/lon
-        get all the bands, don't use pan band or pan sharpen
-        list of pixel values
+4. Calculate overlapping wkt of bounding box and image footprint
 
-pixel values massaged with clusters (ex 10 clusters and throw away insignificant samples), cluster to vector
+5. Get pixel samples from idaho image at water feature locations
 
-ipe bbox with spectral angle mapper from above pixel values
+6. Cluster pixels to find significant samples
+        10 KMeans Plus Plus Clusters, keep 3 largest clusters
+        
+7. IPE Spectral Angle Mapper
+        Idaho Image -> Ortho -> crop to interset of bounding box -> Spectral Angle Mapper -> Min of each band (each sample) -> Threshold (0.03) -> Invert
+        
+        todo: Run this on Batch Service -> TMS 
 
-display on map
+8. Display as layer on leaflet map
 
 
-http://overpass-turbo.eu/
-http://wiki.openstreetmap.org/wiki/Map_Features#Waterway
 run server:
 mvn package wildfly:run

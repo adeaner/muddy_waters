@@ -52,7 +52,14 @@ public class BoundingBoxWaterMask {
             SAXException, IOException, ParseException, com.vividsolutions.jts.io.ParseException {
 
         // upper left lat/lon, lower right lat/lon
-        Double bbox[] = {39.84670129520201, -104.99307632446288, 39.801810432481645, -104.92518424987793};
+
+//        Double bbox[] = {39.84670129520201, -104.99307632446288, 39.801810432481645, -104.92518424987793}; // Commerce City Platte River
+//        Double bbox[] = {39.945172035117984, -104.87874984741211, 39.92161054620153, -104.85591888427734}; //
+//        Double bbox[] = {39.96977788803444, -105.2490234375, 39.93003569725961, -105.20387649536133 }; //marshal rd
+//        Double bbox[] = {30.412077166683314, -81.49520874023438, 30.37772538837059, -81.44233703613281}; //jackson beach
+//        Double bbox[] = {39.779040683054156, -105.24593353271484, 39.75449829691315, -105.18928527832031 }; //golden
+        Double bbox[] = {40.76004940214887, -106.32499694824219, 40.710621542994936, -106.26697540283203}; //
+//        Double bbox[] = {36.43238395557654, -76.32991790771484 , 36.405862003277065, -76.28082275390625}; // Elizabeth City, NC
 
         getOverlay(bbox);
     }
@@ -86,8 +93,9 @@ public class BoundingBoxWaterMask {
             Geometry idaho_id_geometry = reader.read(idaho_id_footprint);
             idaho_id_geometry.setSRID(4326);
             Geometry overlapping_geometry = idaho_id_geometry.intersection(geometry);
+            Geometry buffered_overlapping_geometry = overlapping_geometry.buffer(-0.002);
             WKTWriter writer = new WKTWriter();
-            overlapping_wkt = writer.write(overlapping_geometry);
+            overlapping_wkt = writer.write(buffered_overlapping_geometry);
 
             // Get sample pixels of water features out of idaho image
             List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
@@ -198,6 +206,8 @@ public class BoundingBoxWaterMask {
      */
     public static List<double[]> getSamplePixels(String idaho_id_multi, Map<Long, OsmNode> nodesById) throws IOException {
         // Get idaho chip
+        System.out.println("Getting sample pixels...");
+        long start = System.currentTimeMillis();
         String baseUrl = "http://idaho.geobigdata.io/v1";
         GBDXAuthManager gbdxAuthManager = new GBDXAuthManager();
 
@@ -251,6 +261,8 @@ public class BoundingBoxWaterMask {
             }
 
         }
+        long end = System.currentTimeMillis();
+        System.out.println("time to sample pixels: " + (end - start) + " ms.");
         return pixelvalues;
     }
 
@@ -305,7 +317,7 @@ public class BoundingBoxWaterMask {
 //                System.out.print(centroid);
             }
         }
-        System.out.println(centroid_clusters.toString());
+//        System.out.println(centroid_clusters.toString());
 
         return centroid_clusters;
     }
@@ -377,16 +389,17 @@ public class BoundingBoxWaterMask {
         // Write tif
         System.out.println("writing tif...");
         long start = System.currentTimeMillis();
-        ImageIO.write(image, "TIF", new File("/tmp/file.tif"));
+        ImageIO.write(image, "TIF", new File("walden.tif"));
+//        ImageIO.write(image, "TIF", new File("/tmp/file.tif"));
         long end = System.currentTimeMillis();
         System.out.println("time to write: " + (end - start) + " ms.");
 
-        // write png
-        System.out.println("writing png..");
-        long start_png = System.currentTimeMillis();
-        ImageIO.write(image, "png", new File("/tmp/file.png"));
-        long end_png = System.currentTimeMillis();
-        System.out.println("tie to write: " + (end_png - start_png) + " ms.");
+//        // write png
+//        System.out.println("writing png..");
+//        long start_png = System.currentTimeMillis();
+//        ImageIO.write(image, "png", new File("/tmp/file.png"));
+//        long end_png = System.currentTimeMillis();
+//        System.out.println("tie to write: " + (end_png - start_png) + " ms.");
 
         return "file.png";
     }
