@@ -59,46 +59,55 @@ public class BoundingBoxWaterMask {
         // upper left lat/lon, lower right lat/lon
         // BoundingBox upperLeftLatitude=39.92843137829837, upperLeftLongitude=-105.05199104547503, lowerRightLatitude=39.89999167197872, lowerRightLongitude=-104.9971452355385
         // counter clockwise lon/ lat
-        String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
 
-        WKTReader reader = new WKTReader();
-        Geometry geometry = reader.read(wkt);
-        geometry.setSRID(4326);
+        boolean debug = false;
+
+        String idaho_id_multi;
+        String spectral_angle_signatures;
+        String overlapping_wkt;
+
+        if (! debug) {
+            String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
+
+            WKTReader reader = new WKTReader();
+            Geometry geometry = reader.read(wkt);
+            geometry.setSRID(4326);
 
 
-        // Get water features from OSM
-        Map<Long, OsmNode> nodesById = getFeatures(bbox);
+            // Get water features from OSM
+            Map<Long, OsmNode> nodesById = getFeatures(bbox);
 
-        // Get "best" idaho image
-        String[] idaho_info = getIdahoId(wkt);
-        String idaho_id_multi = idaho_info[0];
-        String idaho_id_footprint = idaho_info[1];
-        //POLYGON ((-105.11402685 39.94873994, -104.91450355 39.92789849, -104.91500157 39.80021883, -105.11321021 39.82066176, -105.11402685 39.94873994))
+            // Get "best" idaho image
+            String[] idaho_info = getIdahoId(wkt);
+            idaho_id_multi = idaho_info[0];
+            String idaho_id_footprint = idaho_info[1];
+            //POLYGON ((-105.11402685 39.94873994, -104.91450355 39.92789849, -104.91500157 39.80021883, -105.11321021 39.82066176, -105.11402685 39.94873994))
 
-        Geometry idaho_id_geometry = reader.read(idaho_id_footprint);
-        idaho_id_geometry.setSRID(4326);
+            Geometry idaho_id_geometry = reader.read(idaho_id_footprint);
+            idaho_id_geometry.setSRID(4326);
 
-        Geometry overlapping_geometry = idaho_id_geometry.intersection(geometry);
+            Geometry overlapping_geometry = idaho_id_geometry.intersection(geometry);
 
-        WKTWriter writer = new WKTWriter();
+            WKTWriter writer = new WKTWriter();
 
-        String overlapping_wkt = writer.write(overlapping_geometry);
+            overlapping_wkt = writer.write(overlapping_geometry);
 
-        // Get sample pixels of water features out of idaho image
-        List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
+            // Get sample pixels of water features out of idaho image
+            List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
 
-        System.out.println(sample_pixels);
+            System.out.println(sample_pixels);
 
-        // Cluster samples to get significant values
-        List<double[]> centroid_clusters = clusterPixels(sample_pixels);
+            // Cluster samples to get significant values
+            List<double[]> centroid_clusters = clusterPixels(sample_pixels);
 
-        // Create water mask
-        String spectral_angle_signatures = new Gson().toJson(centroid_clusters);
+            // Create water mask
+            spectral_angle_signatures = new Gson().toJson(centroid_clusters);
+        } else {
+            idaho_id_multi = "4bb1dfb3-e252-414b-8f52-a41ce0ef774d";
+            spectral_angle_signatures = "[[161.69565217391303,221.07246376811594,206.91304347826087,103.53623188405797,126.71014492753623,62.7536231884058,85.27536231884058,31.028985507246375],[164.43103448275863,230.3793103448276,225.25862068965517,115.8103448275862,145.56896551724137,78.65517241379311,106.10344827586206,37.53448275862069],[168.63636363636363,237.22727272727272,235.4090909090909,127.36363636363636,160.54545454545453,103.63636363636364,157.22727272727272,54.86363636363637]]";
+            overlapping_wkt = "POLYGON ((-104.93042908658934 39.80181, -104.993076 39.80827130494398, -104.993076 39.846701, -104.925184 39.846701, -104.925184 39.80181, -104.93042908658934 39.80181))";
+        }
 
-        String temp_idaho_id_multi = "4bb1dfb3-e252-414b-8f52-a41ce0ef774d";
-        String temp_spectra = "[[161.69565217391303,221.07246376811594,206.91304347826087,103.53623188405797,126.71014492753623,62.7536231884058,85.27536231884058,31.028985507246375],[164.43103448275863,230.3793103448276,225.25862068965517,115.8103448275862,145.56896551724137,78.65517241379311,106.10344827586206,37.53448275862069],[168.63636363636363,237.22727272727272,235.4090909090909,127.36363636363636,160.54545454545453,103.63636363636364,157.22727272727272,54.86363636363637]]";
-        String temp_overlapping_wkt = "POLYGON ((-104.93042908658934 39.80181, -104.993076 39.80827130494398, -104.993076 39.846701, -104.925184 39.846701, -104.925184 39.80181, -104.93042908658934 39.80181))";
-//        RenderNode(temp_idaho_id_multi, temp_spectra, temp_overlapping_wkt);
         RenderNode(idaho_id_multi, spectral_angle_signatures, overlapping_wkt);
     }
 
