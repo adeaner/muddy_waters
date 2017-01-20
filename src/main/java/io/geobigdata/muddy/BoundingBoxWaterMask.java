@@ -42,13 +42,13 @@ import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.xml.sax.SAXException;
 
 /**
- * Hello world!
-
+ * Muddy Waters
  */
 public class BoundingBoxWaterMask {
     public static void main(String[] args) throws ParserConfigurationException,
-            SAXException, IOException, ParseException, com.vividsolutions.jts.io.ParseException{
+            SAXException, IOException, ParseException, com.vividsolutions.jts.io.ParseException {
 
+        // upper left lat/lon, lower right lat/lon
         Double bbox[] = {39.84670129520201, -104.99307632446288, 39.801810432481645, -104.92518424987793};
 
         getOverlay(bbox);
@@ -56,17 +56,14 @@ public class BoundingBoxWaterMask {
 
     public static void getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException, com.vividsolutions.jts.io.ParseException {
 
-        // upper left lat/lon, lower right lat/lon
-        // BoundingBox upperLeftLatitude=39.92843137829837, upperLeftLongitude=-105.05199104547503, lowerRightLatitude=39.89999167197872, lowerRightLongitude=-104.9971452355385
-        // counter clockwise lon/ lat
-
-        boolean debug = false;
+        boolean debug = true;
 
         String idaho_id_multi;
         String spectral_angle_signatures;
         String overlapping_wkt;
 
-        if (! debug) {
+        if (!debug) {
+            // counter clockwise lon/ lat
             String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
 
             WKTReader reader = new WKTReader();
@@ -81,21 +78,17 @@ public class BoundingBoxWaterMask {
             String[] idaho_info = getIdahoId(wkt);
             idaho_id_multi = idaho_info[0];
             String idaho_id_footprint = idaho_info[1];
-            //POLYGON ((-105.11402685 39.94873994, -104.91450355 39.92789849, -104.91500157 39.80021883, -105.11321021 39.82066176, -105.11402685 39.94873994))
 
+            // Calculate overlapping wkt to crop in IPE
             Geometry idaho_id_geometry = reader.read(idaho_id_footprint);
             idaho_id_geometry.setSRID(4326);
-
             Geometry overlapping_geometry = idaho_id_geometry.intersection(geometry);
-
             WKTWriter writer = new WKTWriter();
-
             overlapping_wkt = writer.write(overlapping_geometry);
 
             // Get sample pixels of water features out of idaho image
             List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
-
-            System.out.println(sample_pixels);
+//            System.out.println(sample_pixels);
 
             // Cluster samples to get significant values
             List<double[]> centroid_clusters = clusterPixels(sample_pixels);
@@ -117,7 +110,7 @@ public class BoundingBoxWaterMask {
      * @throws IOException
      */
     private static Map<Long, OsmNode> getFeatures(Double bbox[]) throws IOException {
-        //bbox lower left, upper right
+        // bounding box - lower left, upper right
         String feature_query = String.format(
                 "/*\n" +
                         "Waterways\n" +
@@ -128,7 +121,6 @@ public class BoundingBoxWaterMask {
                         "/*add way to node*/\n" +
                         "(._;>;);\n" +
                         "out;", bbox[2], bbox[1], bbox[0], bbox[3]);
-        //(39.80959097923673,-105.1779556274414,39.98895805956577,-104.90638732910156)
 
         String feature_url = "http://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(feature_query, "UTF-8");
 
@@ -170,9 +162,7 @@ public class BoundingBoxWaterMask {
     public static String[] getIdahoId(String wkt) throws IOException {
         CatalogManager catalogManager = new CatalogManager();
 
-        //
         // Spatial search
-        //
         SearchRequest searchRequest = new SearchRequest();
 
         searchRequest.withSearchAreaWkt(wkt)
@@ -186,19 +176,20 @@ public class BoundingBoxWaterMask {
         for (Record nextRecord : response.getResults()) {
             System.out.println("got record id of \"" + nextRecord.getIdentifier() + "\" of type \"" + nextRecord.getType() + "\"");
 
-            return new String[] {nextRecord.getIdentifier(), nextRecord.getProperties().get("footprintWkt")};
+            return new String[]{nextRecord.getIdentifier(), nextRecord.getProperties().get("footprintWkt")};
 
         }
 
         // sort results, most recent
 
-        return new String[] {}; //null
+        return new String[]{};
     }
 
     /**
      * Get sample pixels of water features out of idaho image
+     *
      * @param idaho_id_multi idaho image id
-     * @param nodesById node
+     * @param nodesById      node
      * @return List of Double Array
      * @throws IOException
      */
@@ -216,30 +207,21 @@ public class BoundingBoxWaterMask {
             Double lat = value.getLatitude();
             Double lon = value.getLongitude();
 
-
+            // Get Idaho image
             String idaho_query = String.format("lat=%s&long=%s" +
                     "&width=1&height=1&resolution=0.3&bands=0,1,2,3,4,5,6,7&format=tif" +
                     "&token=%s", lat, lon, gbdxAuthManager.getAccessToken());
-
             BufferedImage img = null;
-
             try {
-//                Iterator<ImageReader> readers = ImageIO.getImageReadersBySuffix("TIF");
-//                while(readers.hasNext()){
-//                    ImageReader reader = readers.next();
-//                    System.out.println(reader.getClass().getName());
-//                }
-
                 URL idaho_url = new URL(baseUrl + pathUrl + idaho_query);
                 InputStream input = idaho_url.openStream();
-
                 img = ImageIO.read(input);
-
 
             } catch (IOException e) {
                 System.out.println(e);
             }
 
+            // Get pixel and check to see if it's black
             try {
                 Raster raster_pixel = img.getData();
                 double[] pixel = new double[8];
@@ -255,7 +237,6 @@ public class BoundingBoxWaterMask {
                     pixelvalues.add(pixel);
                 }
 
-
             } catch (NullPointerException e) {
                 System.out.println(e);
             }
@@ -266,10 +247,11 @@ public class BoundingBoxWaterMask {
 
     /**
      * Cluster Pixels
+     *
      * @param sample_pixels List of Double array
      * @return List of Double array
      */
-    private static List<double[]> clusterPixels(List<double[]> sample_pixels){
+    private static List<double[]> clusterPixels(List<double[]> sample_pixels) {
         List<ClusterablePixel> clusterInput = new ArrayList<>();
 
         for (double[] pixel : sample_pixels) {
@@ -285,7 +267,7 @@ public class BoundingBoxWaterMask {
         List<CentroidCluster<ClusterablePixel>> clusterResults = clusterer.cluster(clusterInput);
 
         Comparator<CentroidCluster<ClusterablePixel>> sort_clusters =
-                (CentroidCluster<ClusterablePixel> o1, CentroidCluster<ClusterablePixel> o2)->(Integer.valueOf(o2.getPoints().size()).compareTo(Integer.valueOf(o1.getPoints().size()) ));
+                (CentroidCluster<ClusterablePixel> o1, CentroidCluster<ClusterablePixel> o2) -> (Integer.valueOf(o2.getPoints().size()).compareTo(Integer.valueOf(o1.getPoints().size())));
 
         Collections.sort(clusterResults, sort_clusters);
 
@@ -318,11 +300,12 @@ public class BoundingBoxWaterMask {
 
         return centroid_clusters;
     }
+
     /**
      * Render IPE node
-     *
+     * <p>
      * IDAHO > Ortho > Spectral Angle Mapper > Min value of each band > Threshold > Invert
-     *
+     * <p>
      * Notes:
      * - You get a band per signature from spectral angle mapper. Darker = better match
      * - recursively get the minimum of each band
@@ -333,7 +316,8 @@ public class BoundingBoxWaterMask {
             ParserConfigurationException, ParseException, IOException {
         ObjectMapper om = new ObjectMapper();
 
-        File file = new File("/Users/DGashleydeaner/Documents/git/muddy_waters/src/main/java/io/geobigdata/muddy/graph.json");
+        System.out.println("reading and updating graph...");
+        File file = new File("graph.json");
 
         IPEGraph graph = om.readValue(file, IPEGraph.class);
 
@@ -343,7 +327,7 @@ public class BoundingBoxWaterMask {
         idaho_read_parameters.put("imageId", idaho_id);
         idaho_read_parameters.put("objectStore", "S3");
 
-        for (IPEGraphNode node : graph.getNodes()){
+        for (IPEGraphNode node : graph.getNodes()) {
             if (node.getId().equals("IdahoRead_nas220")) {
                 node.setParameters(idaho_read_parameters);
             }
@@ -353,7 +337,7 @@ public class BoundingBoxWaterMask {
         Map<String, String> spectral_angle_parameters = new HashMap<>();
         spectral_angle_parameters.put("signatures", spectral_angle_signatures);
 
-        for (IPEGraphNode node : graph.getNodes()){
+        for (IPEGraphNode node : graph.getNodes()) {
             if (node.getId().equals("SpectralAngle_mz58by")) {
                 node.setParameters(spectral_angle_parameters);
             }
@@ -363,7 +347,7 @@ public class BoundingBoxWaterMask {
         Map<String, String> crop_parameters = new HashMap<>();
         crop_parameters.put("geospatialWKT", overlapping_wkt);
 
-        for (IPEGraphNode node : graph.getNodes()){
+        for (IPEGraphNode node : graph.getNodes()) {
             if (node.getId().equals("GeospatialCrop_aqe9xq")) {
                 node.setParameters(crop_parameters);
             }
@@ -379,8 +363,21 @@ public class BoundingBoxWaterMask {
 //        pbC.add(5000f);
 //        RenderedImage crop = JAI.create("Crop", pbC);
 
-        System.out.println(image.getMinX()+" "+image.getMinY()+"  "+image.getWidth()+" "+image.getHeight());
-        ImageIO.write(image, "PNG", new File("file.png"));
+        System.out.println(image.getMinX() + " " + image.getMinY() + "  " + image.getWidth() + " " + image.getHeight());
+
+        // Write tif
+        System.out.println("writing tif...");
+        long start = System.currentTimeMillis();
+        ImageIO.write(image, "TIF", new File("/tmp/file.tif"));
+        long end = System.currentTimeMillis();
+        System.out.println("time to write: " + (end - start) + " ms.");
+
+        // write png
+        System.out.println("writing png..");
+        long start_png = System.currentTimeMillis();
+        ImageIO.write(image, "png", new File("/tmp/file.png"));
+        long end_png = System.currentTimeMillis();
+        System.out.println("tie to write: " + (end_png - start_png) + " ms.");
 
         return "file.png";
     }
