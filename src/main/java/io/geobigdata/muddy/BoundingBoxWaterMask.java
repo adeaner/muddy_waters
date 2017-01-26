@@ -67,11 +67,25 @@ public class BoundingBoxWaterMask {
 
 //        String cat_id = "103001005B3EEE00";
 //        String cat_id = "1040010020787A00";
+        // 498018dd-7d00-481b-abc5-04d7aed04c0b wv03 beautiul
+
         idahoImage img = new idahoImage();
-        img.setByIdahoImageId("5c0280c5-3cd6-4214-a349-2bcbea5b25ad");
+//        img.setByIdahoImageId("5c0280c5-3cd6-4214-a349-2bcbea5b25ad"); wv02 baton rouge
+//        String aoi = "POLYGON((-90.98670959472656 30.106041238914163,-90.8294677734375 30.106041238914163,-90.8294677734375 30.006196189088108,-90.98670959472656 30.006196189088108,-90.98670959472656 30.106041238914163))";
+
+//        img.setByIdahoImageId("2ef9bcd0-e219-41bc-adf5-4c4ce2fd0305"); // wv03 w/ clouds
+//        String aoi = "POLYGON((-91.01898193359375 30.161269281485744,-90.89057922363281 30.161269281485744,-90.89057922363281 30.07098807994365,-91.01898193359375 30.07098807994365,-91.01898193359375 30.161269281485744))";
+
+//        img.setByIdahoImageId("2c75460c-0712-4d98-a2a0-322fd7df9044"); // wv03 w/ clouds
+//        String aoi = "POLYGON((-91.24214172363281 30.2206197762358,-91.00181579589844 30.2206197762358,-91.00181579589844 30.106635253152803,-91.24214172363281 30.106635253152803,-91.24214172363281 30.2206197762358))";
+
+
+        img.setByIdahoImageId("8099ac52-4337-4ff8-b7b1-b38c332042e6"); // wv03 hazy
+        String aoi = "POLYGON((-91.06636047363281 30.250874750415438,-90.97160339355469 30.250874750415438,-90.97160339355469 30.158300818026124,-91.06636047363281 30.158300818026124,-91.06636047363281 30.250874750415438))";
+
+
 //        img.setByCatalogId(cat_id);
 //        String aoi = "POLYGON((-90.99838256835938 30.20519208886129,-90.8074951171875 30.20519208886129,-90.8074951171875 30.10307111415961,-90.99838256835938 30.10307111415961,-90.99838256835938 30.20519208886129))";
-        String aoi = "POLYGON((-90.98670959472656 30.106041238914163,-90.8294677734375 30.106041238914163,-90.8294677734375 30.006196189088108,-90.98670959472656 30.006196189088108,-90.98670959472656 30.106041238914163))";
 
         getWaterMask(img, aoi);
     }
@@ -431,7 +445,7 @@ public class BoundingBoxWaterMask {
         // Write tif
         System.out.println("writing tif...");
         long start = System.currentTimeMillis();
-        ImageIO.write(image, "TIF", new File("walden.tif"));
+        ImageIO.write(image, "TIF", new File("baton_rouge_wv03_hazy_2.tif"));
 //        ImageIO.write(image, "TIF", new File("/tmp/file.tif"));
         long end = System.currentTimeMillis();
         System.out.println("time to write: " + (end - start) + " ms.");
