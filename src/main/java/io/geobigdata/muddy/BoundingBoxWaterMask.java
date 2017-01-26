@@ -79,9 +79,12 @@ public class BoundingBoxWaterMask {
 //        img.setByIdahoImageId("2c75460c-0712-4d98-a2a0-322fd7df9044"); // wv03 w/ clouds
 //        String aoi = "POLYGON((-91.24214172363281 30.2206197762358,-91.00181579589844 30.2206197762358,-91.00181579589844 30.106635253152803,-91.24214172363281 30.106635253152803,-91.24214172363281 30.2206197762358))";
 
+        img.setByIdahoImageId("2bb19b93-86aa-46c5-b2dc-a683c015e6d8"); // wv03 w/ clouds in the tree
+        String aoi = "POLYGON((-90.6866455078125 30.23664291004952,-90.65574645996094 30.23664291004952,-90.65574645996094 30.209647267420458,-90.6866455078125 30.209647267420458,-90.6866455078125 30.23664291004952))";
 
-        img.setByIdahoImageId("8099ac52-4337-4ff8-b7b1-b38c332042e6"); // wv03 hazy
-        String aoi = "POLYGON((-91.06636047363281 30.250874750415438,-90.97160339355469 30.250874750415438,-90.97160339355469 30.158300818026124,-91.06636047363281 30.158300818026124,-91.06636047363281 30.250874750415438))";
+
+//        img.setByIdahoImageId("8099ac52-4337-4ff8-b7b1-b38c332042e6"); // wv03 hazy
+//        String aoi = "POLYGON((-91.06636047363281 30.250874750415438,-90.97160339355469 30.250874750415438,-90.97160339355469 30.158300818026124,-91.06636047363281 30.158300818026124,-91.06636047363281 30.250874750415438))";
 
 
 //        img.setByCatalogId(cat_id);
@@ -445,7 +448,7 @@ public class BoundingBoxWaterMask {
         // Write tif
         System.out.println("writing tif...");
         long start = System.currentTimeMillis();
-        ImageIO.write(image, "TIF", new File("baton_rouge_wv03_hazy_2.tif"));
+        ImageIO.write(image, "TIF", new File("baton_rouge_wv03_clouds_trees.tif"));
 //        ImageIO.write(image, "TIF", new File("/tmp/file.tif"));
         long end = System.currentTimeMillis();
         System.out.println("time to write: " + (end - start) + " ms.");
