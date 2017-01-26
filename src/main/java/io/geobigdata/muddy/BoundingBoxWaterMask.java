@@ -28,7 +28,7 @@ import com.digitalglobe.gbdx.tools.catalog.model.SearchRequest;
 import com.digitalglobe.gbdx.tools.catalog.model.SearchResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.*;
 import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
 import de.topobyte.osm4j.core.access.OsmIterator;
@@ -39,6 +39,8 @@ import de.topobyte.osm4j.core.model.iface.OsmWay;
 import de.topobyte.osm4j.xml.dynsax.OsmXmlIterator;
 import io.geobigdata.ipe.IPEGraph;
 import io.geobigdata.ipe.IPEGraphNode;
+//import io.geobigdata.idaho.image.ImageMetadata;
+import io.geobigdata.muddy.services.idahoImage;
 import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
@@ -52,53 +54,86 @@ public class BoundingBoxWaterMask {
             SAXException, IOException, ParseException, com.vividsolutions.jts.io.ParseException {
 
         // upper left lat/lon, lower right lat/lon
+        Double[] bbox;
 
 //        Double bbox[] = {39.84670129520201, -104.99307632446288, 39.801810432481645, -104.92518424987793}; // Commerce City Platte River
 //        Double bbox[] = {39.945172035117984, -104.87874984741211, 39.92161054620153, -104.85591888427734}; //
 //        Double bbox[] = {39.96977788803444, -105.2490234375, 39.93003569725961, -105.20387649536133 }; //marshal rd
 //        Double bbox[] = {30.412077166683314, -81.49520874023438, 30.37772538837059, -81.44233703613281}; //jackson beach
 //        Double bbox[] = {39.779040683054156, -105.24593353271484, 39.75449829691315, -105.18928527832031 }; //golden
-        Double bbox[] = {40.76004940214887, -106.32499694824219, 40.710621542994936, -106.26697540283203}; //
+        bbox = new Double[]{40.76004940214887, -106.32499694824219, 40.710621542994936, -106.26697540283203}; //
+
 //        Double bbox[] = {36.43238395557654, -76.32991790771484 , 36.405862003277065, -76.28082275390625}; // Elizabeth City, NC
 
-        getOverlay(bbox);
+//        String cat_id = "103001005B3EEE00";
+//        String cat_id = "1040010020787A00";
+        idahoImage img = new idahoImage();
+        img.setByIdahoImageId("5c0280c5-3cd6-4214-a349-2bcbea5b25ad");
+//        img.setByCatalogId(cat_id);
+//        String aoi = "POLYGON((-90.99838256835938 30.20519208886129,-90.8074951171875 30.20519208886129,-90.8074951171875 30.10307111415961,-90.99838256835938 30.10307111415961,-90.99838256835938 30.20519208886129))";
+        String aoi = "POLYGON((-90.98670959472656 30.106041238914163,-90.8294677734375 30.106041238914163,-90.8294677734375 30.006196189088108,-90.98670959472656 30.006196189088108,-90.98670959472656 30.106041238914163))";
+
+        getWaterMask(img, aoi);
     }
 
-    public static void getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException, com.vividsolutions.jts.io.ParseException {
+    public static String getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException, com.vividsolutions.jts.io.ParseException {
 
-        boolean debug = false;
 
-        String idaho_id_multi;
+        // counter clockwise lon/ lat
+        String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
+        idahoImage img = new idahoImage();
+        img.setByWKT(wkt);
+
+        return getWaterMask(img, wkt);
+
+    }
+
+    public static String getWaterMask(idahoImage img, String... aoi_wkt) throws ParseException, ParserConfigurationException, com.vividsolutions.jts.io.ParseException, IOException {
+
+
+        Boolean DEBUG = false;
         String spectral_angle_signatures;
         String overlapping_wkt;
-
-        if (!debug) {
-            // counter clockwise lon/ lat
-            String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
-
-            WKTReader reader = new WKTReader();
-            Geometry geometry = reader.read(wkt);
-            geometry.setSRID(4326);
-
-
+        if (!DEBUG) {
             // Get water features from OSM
-            Map<Long, OsmNode> nodesById = getFeatures(bbox);
+            Map<Long, OsmNode> nodesById = getFeatures(img.getBoundingBox());
 
-            // Get "best" idaho image
-            String[] idaho_info = getIdahoId(wkt);
-            idaho_id_multi = idaho_info[0];
-            String idaho_id_footprint = idaho_info[1];
+
+//            String[] idaho_info = getIdahoId(wkt);
+//            idaho_id_multi = idaho_info[0];
+//            String idaho_id_footprint = idaho_info[1];
 
             // Calculate overlapping wkt to crop in IPE
-            Geometry idaho_id_geometry = reader.read(idaho_id_footprint);
-            idaho_id_geometry.setSRID(4326);
-            Geometry overlapping_geometry = idaho_id_geometry.intersection(geometry);
-            Geometry buffered_overlapping_geometry = overlapping_geometry.buffer(-0.002);
+            WKTReader reader = new WKTReader();
             WKTWriter writer = new WKTWriter();
-            overlapping_wkt = writer.write(buffered_overlapping_geometry);
+            if (aoi_wkt.length > 0) {
+
+                Geometry aoi_geometry = reader.read(aoi_wkt[0]);
+                aoi_geometry.setSRID(4326);
+
+                Geometry idaho_id_geometry = reader.read(img.metadata.getImageBoundsWGS84());
+                idaho_id_geometry.setSRID(4326);
+                Geometry overlapping_geometry = idaho_id_geometry.intersection(aoi_geometry);
+                Geometry buffered_overlapping_geometry = overlapping_geometry.buffer(-0.002);
+
+                overlapping_wkt = writer.write(buffered_overlapping_geometry);
+            } else {
+                Geometry idaho_id_geometry = reader.read(img.metadata.getImageBoundsWGS84());
+                idaho_id_geometry.setSRID(4326);
+
+                idaho_id_geometry.getFactory().toGeometry(idaho_id_geometry.getEnvelopeInternal());
+                // this gets largest rectangle, I need MAR
+
+                Geometry idaho_id_envelope = idaho_id_geometry.getBoundary().getEnvelope();
+
+
+                idaho_id_geometry.getEnvelope().buffer(-0.002);
+                overlapping_wkt = writer.write(idaho_id_geometry);
+            }
+
 
             // Get sample pixels of water features out of idaho image
-            List<double[]> sample_pixels = getSamplePixels(idaho_id_multi, nodesById);
+            List<double[]> sample_pixels = getSamplePixels(img.metadata.getImageId(), nodesById);
 //            System.out.println(sample_pixels);
 
             // Cluster samples to get significant values
@@ -106,13 +141,20 @@ public class BoundingBoxWaterMask {
 
             // Create water mask
             spectral_angle_signatures = new Gson().toJson(centroid_clusters);
-        } else {
-            idaho_id_multi = "4bb1dfb3-e252-414b-8f52-a41ce0ef774d";
-            spectral_angle_signatures = "[[161.69565217391303,221.07246376811594,206.91304347826087,103.53623188405797,126.71014492753623,62.7536231884058,85.27536231884058,31.028985507246375],[164.43103448275863,230.3793103448276,225.25862068965517,115.8103448275862,145.56896551724137,78.65517241379311,106.10344827586206,37.53448275862069],[168.63636363636363,237.22727272727272,235.4090909090909,127.36363636363636,160.54545454545453,103.63636363636364,157.22727272727272,54.86363636363637]]";
-            overlapping_wkt = "POLYGON ((-104.93042908658934 39.80181, -104.993076 39.80827130494398, -104.993076 39.846701, -104.925184 39.846701, -104.925184 39.80181, -104.93042908658934 39.80181))";
+            //
+        } else
+
+        {
+//            idaho_id_multi = "4bb1dfb3-e252-414b-8f52-a41ce0ef774d";
+            String idaho_id = "5c0280c5-3cd6-4214-a349-2bcbea5b25ad";
+//        spectral_angle_signatures = "[[161.69565217391303,221.07246376811594,206.91304347826087,103.53623188405797,126.71014492753623,62.7536231884058,85.27536231884058,31.028985507246375],[164.43103448275863,230.3793103448276,225.25862068965517,115.8103448275862,145.56896551724137,78.65517241379311,106.10344827586206,37.53448275862069],[168.63636363636363,237.22727272727272,235.4090909090909,127.36363636363636,160.54545454545453,103.63636363636364,157.22727272727272,54.86363636363637]]";
+            spectral_angle_signatures = "[[387.3835616438356,220.97260273972603,233.65753424657535,238.3972602739726,154.82191780821918,181.41095890410958,166.3835616438356,125.9041095890411],[413.3666666666667,246.7,293.7,324.6666666666667,217.7,422.2,560.2,491.0],[546.7586206896551,350.86206896551727,451.41379310344826,549.551724137931,369.0689655172414,624.2068965517242,759.8965517241379,665.3448275862069]]";
+//        overlapping_wkt = "POLYGON ((-104.93042908658934 39.80181, -104.993076 39.80827130494398, -104.993076 39.846701, -104.925184 39.846701, -104.925184 39.80181, -104.93042908658934 39.80181))";
+            overlapping_wkt = "POLYGON ((-91.0043682 30.23128629, -90.80189875 30.20764962, -90.80252901 30.07958263, -91.00382784 30.10251119, -91.0043682 30.23128629))";
+            return RenderNode(idaho_id, spectral_angle_signatures, overlapping_wkt);
         }
 
-        RenderNode(idaho_id_multi, spectral_angle_signatures, overlapping_wkt);
+        return RenderNode(img.metadata.getImageId(), spectral_angle_signatures, overlapping_wkt);
     }
 
     /**
@@ -216,7 +258,7 @@ public class BoundingBoxWaterMask {
         List<double[]> pixelvalues = new ArrayList();
         // Iterate nodes to get pixel values
 
-        System.out.println( "got " + nodesById.values().size() + " nodes");
+        System.out.println("got " + nodesById.values().size() + " nodes");
         int nodeNumber = 0;
         for (OsmNode value : nodesById.values()) {
 
@@ -234,7 +276,7 @@ public class BoundingBoxWaterMask {
                 img = ImageIO.read(input);
                 input.close();
 
-                System.out.println("got node " + nodeNumber++ );
+                System.out.println("got node " + nodeNumber++);
 
             } catch (IOException e) {
                 System.out.println(e);
