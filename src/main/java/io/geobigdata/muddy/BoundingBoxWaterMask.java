@@ -3,65 +3,64 @@ package io.geobigdata.muddy;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
-import java.awt.image.RenderedImage;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.imageio.ImageIO;
 import javax.xml.parsers.ParserConfigurationException;
 
-import com.digitalglobe.gbdx.tools.auth.GBDXAuthManager;
-import com.digitalglobe.gbdx.tools.catalog.CatalogManager;
-import com.digitalglobe.gbdx.tools.catalog.model.Record;
-import com.digitalglobe.gbdx.tools.catalog.model.SearchRequest;
-import com.digitalglobe.gbdx.tools.catalog.model.SearchResponse;
+import com.digitalglobe.gbdx.tools.config.ConfigurationManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.vividsolutions.jts.geom.*;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
-import de.topobyte.osm4j.core.access.OsmIterator;
-import de.topobyte.osm4j.core.model.iface.EntityContainer;
-import de.topobyte.osm4j.core.model.iface.EntityType;
-import de.topobyte.osm4j.core.model.iface.OsmNode;
-import de.topobyte.osm4j.core.model.iface.OsmWay;
-import de.topobyte.osm4j.xml.dynsax.OsmXmlIterator;
 import io.geobigdata.ipe.IPEGraph;
 import io.geobigdata.ipe.IPEGraphNode;
-//import io.geobigdata.idaho.image.ImageMetadata;
 import io.geobigdata.muddy.services.idahoImage;
 import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
+import org.geotools.feature.FeatureIterator;
+import org.geotools.geojson.feature.FeatureJSON;
+import org.geotools.referencing.CRS;
+import org.geotools.referencing.GeodeticCalculator;
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.referencing.FactoryException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 /**
  * Muddy Waters
  */
 public class BoundingBoxWaterMask {
-    public static void main(String[] args) throws ParserConfigurationException,
-            SAXException, IOException, ParseException, com.vividsolutions.jts.io.ParseException {
+    private static final Logger logger = LoggerFactory.getLogger(BoundingBoxWaterMask.class);
+
+    public void main(String[] args) throws ParserConfigurationException,
+            SAXException, IOException, ParseException, com.vividsolutions.jts.io.ParseException,
+            org.json.simple.parser.ParseException, FactoryException,
+            org.opengis.referencing.operation.TransformException, URISyntaxException {
 
         // upper left lat/lon, lower right lat/lon
-        Double[] bbox;
 
 //        Double bbox[] = {39.84670129520201, -104.99307632446288, 39.801810432481645, -104.92518424987793}; // Commerce City Platte River
 //        Double bbox[] = {39.945172035117984, -104.87874984741211, 39.92161054620153, -104.85591888427734}; //
 //        Double bbox[] = {39.96977788803444, -105.2490234375, 39.93003569725961, -105.20387649536133 }; //marshal rd
 //        Double bbox[] = {30.412077166683314, -81.49520874023438, 30.37772538837059, -81.44233703613281}; //jackson beach
 //        Double bbox[] = {39.779040683054156, -105.24593353271484, 39.75449829691315, -105.18928527832031 }; //golden
-        bbox = new Double[]{40.76004940214887, -106.32499694824219, 40.710621542994936, -106.26697540283203}; //
+//        bbox = new Double[]{40.76004940214887, -106.32499694824219, 40.710621542994936, -106.26697540283203}; // upper, left, lower, right
 
 //        Double bbox[] = {36.43238395557654, -76.32991790771484 , 36.405862003277065, -76.28082275390625}; // Elizabeth City, NC
 
@@ -70,8 +69,11 @@ public class BoundingBoxWaterMask {
         // 498018dd-7d00-481b-abc5-04d7aed04c0b wv03 beautiul
 
         idahoImage img = new idahoImage();
-//        img.setByIdahoImageId("5c0280c5-3cd6-4214-a349-2bcbea5b25ad"); wv02 baton rouge
-//        String aoi = "POLYGON((-90.98670959472656 30.106041238914163,-90.8294677734375 30.106041238914163,-90.8294677734375 30.006196189088108,-90.98670959472656 30.006196189088108,-90.98670959472656 30.106041238914163))";
+        img.setByIdahoImageId("5c0280c5-3cd6-4214-a349-2bcbea5b25ad"); //wv02 baton rouge
+        String aoi = "POLYGON((-90.98670959472656 30.106041238914163,-90.8294677734375 30.106041238914163,-90.8294677734375 30.006196189088108,-90.98670959472656 30.006196189088108,-90.98670959472656 30.106041238914163))";
+
+//        img.setByIdahoImageId("2bb19b93-86aa-46c5-b2dc-a683c015e6d8"); // wv02 w/ clouds
+//        String aoi = "POLYGON((-90.6866455078125 30.23664291004952,-90.65574645996094 30.23664291004952,-90.65574645996094 30.209647267420458,-90.6866455078125 30.209647267420458,-90.6866455078125 30.23664291004952))";
 
 //        img.setByIdahoImageId("2ef9bcd0-e219-41bc-adf5-4c4ce2fd0305"); // wv03 w/ clouds
 //        String aoi = "POLYGON((-91.01898193359375 30.161269281485744,-90.89057922363281 30.161269281485744,-90.89057922363281 30.07098807994365,-91.01898193359375 30.07098807994365,-91.01898193359375 30.161269281485744))";
@@ -79,8 +81,8 @@ public class BoundingBoxWaterMask {
 //        img.setByIdahoImageId("2c75460c-0712-4d98-a2a0-322fd7df9044"); // wv03 w/ clouds
 //        String aoi = "POLYGON((-91.24214172363281 30.2206197762358,-91.00181579589844 30.2206197762358,-91.00181579589844 30.106635253152803,-91.24214172363281 30.106635253152803,-91.24214172363281 30.2206197762358))";
 
-        img.setByIdahoImageId("2bb19b93-86aa-46c5-b2dc-a683c015e6d8"); // wv03 w/ clouds in the tree
-        String aoi = "POLYGON((-90.6866455078125 30.23664291004952,-90.65574645996094 30.23664291004952,-90.65574645996094 30.209647267420458,-90.6866455078125 30.209647267420458,-90.6866455078125 30.23664291004952))";
+//        img.setByIdahoImageId("2bb19b93-86aa-46c5-b2dc-a683c015e6d8"); // wv03 w/ clouds in the tree
+//        String aoi = "POLYGON((-90.6866455078125 30.23664291004952,-90.65574645996094 30.23664291004952,-90.65574645996094 30.209647267420458,-90.6866455078125 30.209647267420458,-90.6866455078125 30.23664291004952))";
 
 
 //        img.setByIdahoImageId("8099ac52-4337-4ff8-b7b1-b38c332042e6"); // wv03 hazy
@@ -93,19 +95,11 @@ public class BoundingBoxWaterMask {
         getWaterMask(img, aoi);
     }
 
-    public static String getOverlay(Double[] bbox) throws IOException, ParserConfigurationException, ParseException, com.vividsolutions.jts.io.ParseException {
 
-
-        // counter clockwise lon/ lat
-        String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
-        idahoImage img = new idahoImage();
-        img.setByWKT(wkt);
-
-        return getWaterMask(img, wkt);
-
-    }
-
-    public static String getWaterMask(idahoImage img, String... aoi_wkt) throws ParseException, ParserConfigurationException, com.vividsolutions.jts.io.ParseException, IOException {
+    public String getWaterMask(idahoImage img, String... aoi_wkt) throws ParseException,
+            ParserConfigurationException, com.vividsolutions.jts.io.ParseException, IOException,
+            org.json.simple.parser.ParseException, FactoryException,
+            org.opengis.referencing.operation.TransformException, URISyntaxException {
 
 
         Boolean DEBUG = false;
@@ -113,12 +107,7 @@ public class BoundingBoxWaterMask {
         String overlapping_wkt;
         if (!DEBUG) {
             // Get water features from OSM
-            Map<Long, OsmNode> nodesById = getFeatures(img.getBoundingBox());
-
-
-//            String[] idaho_info = getIdahoId(wkt);
-//            idaho_id_multi = idaho_info[0];
-//            String idaho_id_footprint = idaho_info[1];
+            List<Point> nodesById = getFeatures(img.getBoundingBox());
 
             // Calculate overlapping wkt to crop in IPE
             WKTReader reader = new WKTReader();
@@ -141,17 +130,12 @@ public class BoundingBoxWaterMask {
                 idaho_id_geometry.getFactory().toGeometry(idaho_id_geometry.getEnvelopeInternal());
                 // this gets largest rectangle, I need MAR
 
-                Geometry idaho_id_envelope = idaho_id_geometry.getBoundary().getEnvelope();
-
-
                 idaho_id_geometry.getEnvelope().buffer(-0.002);
                 overlapping_wkt = writer.write(idaho_id_geometry);
             }
 
-
             // Get sample pixels of water features out of idaho image
             List<double[]> sample_pixels = getSamplePixels(img.metadata.getImageId(), nodesById);
-//            System.out.println(sample_pixels);
 
             // Cluster samples to get significant values
             List<double[]> centroid_clusters = clusterPixels(sample_pixels);
@@ -174,86 +158,109 @@ public class BoundingBoxWaterMask {
         return RenderNode(img.metadata.getImageId(), spectral_angle_signatures, overlapping_wkt);
     }
 
-    /**
-     * @param bbox double array of upper left and lower right lat/ lon
-     * @return Node hash map with lat/lon
-     * @throws IOException
-     */
-    private static Map<Long, OsmNode> getFeatures(Double bbox[]) throws IOException {
-        // bounding box - lower left, upper right
-        String feature_query = String.format(
-                "/*\n" +
-                        "Waterways\n" +
-                        "*/\n" +
-                        "way\n" +
-                        "  [waterway=river]\n" +
-                        "  (%f,%f,%f,%f);\n" +
-                        "/*add way to node*/\n" +
-                        "(._;>;);\n" +
-                        "out;", bbox[2], bbox[1], bbox[0], bbox[3]);
+    private List<Point> createSegments(Geometry track, double segmentLength) throws
+            FactoryException {
 
-        String feature_url = "http://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(feature_query, "UTF-8");
+        GeodeticCalculator calculator = new GeodeticCalculator(CRS.decode("EPSG:4326")); // KML uses WGS84
+        GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING), 4326);
 
-        Map<Long, OsmNode> nodesById = new HashMap<>();
-        Map<Long, OsmWay> waysById = new HashMap<>();
+        LinkedList<Coordinate> coordinates = new LinkedList<>();
+        Collections.addAll(coordinates, track.getCoordinates());
 
-        // Open a stream
-        InputStream input = new URL(feature_url).openStream();
+        double accumulatedLength = 0;
+//        List<Coordinate> lastSegment = new ArrayList<>();
+//        List<LineString> segments = new ArrayList<>();
+        List<Point> points = new ArrayList<>();
+        Iterator<Coordinate> itCoordinates = coordinates.iterator();
 
-        // Create a reader for XML data
-        OsmIterator iterator = new OsmXmlIterator(input, false);
+        for (int i = 0; itCoordinates.hasNext() && i < coordinates.size() - 1; i++) {
+            Coordinate c1 = coordinates.get(i);
+            Coordinate c2 = coordinates.get(i + 1);
 
-        // Iterate contained entities
-        // Collect feature nodes
-        for (EntityContainer container : iterator) {
+//            lastSegment.add(c1);
 
-            if (EntityType.Node.equals(container.getType())) {
-                OsmNode node = (OsmNode) container.getEntity();
-                nodesById.put(node.getId(), node);
-//                System.out.println("Added node: "+node.getId());
-            } else if (EntityType.Way.equals(container.getType())) {
-                OsmWay way = (OsmWay) container.getEntity();
-                waysById.put(way.getId(), way);
-                System.out.println("Added way: " + way.getId());
+            calculator.setStartingGeographicPoint(c1.x, c1.y);
+            calculator.setDestinationGeographicPoint(c2.x, c2.y);
+
+            double length = calculator.getOrthodromicDistance();
+
+            if (length + accumulatedLength >= segmentLength) {
+                double offsetLength = segmentLength - accumulatedLength;
+                double ratio = offsetLength / length;
+                double dx = c2.x - c1.x;
+                double dy = c2.y - c1.y;
+
+                Coordinate segmentationPoint = new Coordinate(c1.x + (dx * ratio),
+                        c1.y + (dy * ratio));
+
+//                lastSegment.add(segmentationPoint); // Last point of the segment is the segmentation point
+//                segments.add(geometryFactory.createLineString(lastSegment.toArray(new Coordinate[lastSegment.size()])));
+                points.add(geometryFactory.createPoint(segmentationPoint));
+
+//                lastSegment = new ArrayList<Coordinate>(); // Resets the variable since a new segment will be built
+                accumulatedLength = 0D;
+                coordinates.add(i + 1, segmentationPoint);
+            } else {
+                accumulatedLength += length;
             }
         }
 
-        return nodesById;
+//        lastSegment.add(coordinates.getLast()); // Because the last one is never added in the loop above
+//        segments.add(geometryFactory.createLineString(lastSegment.toArray(new Coordinate[lastSegment.size()])));
+        points.add(geometryFactory.createPoint(coordinates.getLast()));
 
+        return points;
     }
 
     /**
-     * Get IDAHO id
-     *
-     * @param wkt string of the POLYGON(())
-     * @return string of an IDAHO id
-     * @throws IOException
+     * @param bbox double array of upper left and lower right lat/ lon
+     * @return Node hash map with lat/lon
+     * @throws IOException, org.json.simple.parser.ParseException,
+     *                      FactoryException, org.opengis.referencing.operation.TransformException, NullPointerException
      */
-    public static String[] getIdahoId(String wkt) throws IOException {
-        CatalogManager catalogManager = new CatalogManager();
+    private List<Point> getFeatures(Double bbox[]) throws IOException, org.json.simple.parser.ParseException,
+            FactoryException, org.opengis.referencing.operation.TransformException, NullPointerException {
+        // bounding box - lower left, upper right
+        String feature_query = "ingest_source:OSM AND item_type:River";
 
-        // Spatial search
-        SearchRequest searchRequest = new SearchRequest();
+        String feature_url = "https://vector.geobigdata.io/insight-vector/api/vectors/query/items?q=" +
+                URLEncoder.encode(feature_query, "UTF-8") + "&left=" + bbox[1] + "&right=" + bbox[3] +
+                "&upper=" + bbox[0] + "&lower=" + bbox[2] + "&count=100";
 
-        searchRequest.withSearchAreaWkt(wkt)
-                .withFilters(Arrays.asList("sensorPlatformName = 'WV03'", "cloudCover < 20", "colorInterpretation = 'WORLDVIEW_8_BAND'"))
-                .withTypes(Collections.singletonList("IDAHOImage"));
+        // Open a stream
+        ConfigurationManager gbdxAuthManager = new ConfigurationManager();
+        HttpGet imageRequest = new HttpGet(feature_url);
+        imageRequest.setHeader("Authorization", "Bearer " + gbdxAuthManager.getAccessToken());
+        logger.info("Getting features...");
+        HttpResponse imageResponse = HttpClientBuilder.create().build().execute(imageRequest);
 
-        SearchResponse response = catalogManager.search(searchRequest);
+        assert imageResponse.getStatusLine().getStatusCode() == 200;
 
-        System.out.println("got a total of " + response.getStats().getRecordsReturned() + " records returned");
-        // this for loop is broken...
-        for (Record nextRecord : response.getResults()) {
-            System.out.println("got record id of \"" + nextRecord.getIdentifier() + "\" of type \"" + nextRecord.getType() + "\"");
+        String features_string = EntityUtils.toString(imageResponse.getEntity());
+        String feature_collection_string = "{\"type\": \"FeatureCollection\", \"features\": " + features_string + "}";
 
-            return new String[]{nextRecord.getIdentifier(), nextRecord.getProperties().get("footprintWkt")};
 
+        FeatureJSON jfc = new FeatureJSON();
+        org.geotools.feature.FeatureCollection fc;
+        try {
+            fc = jfc.readFeatureCollection(feature_collection_string);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
-        // sort results, most recent
+        FeatureIterator<SimpleFeature> iter = fc.features();
+        List<Point> allpoints = new ArrayList<>();
+        while (iter.hasNext()) {
+            SimpleFeature sf = iter.next();
+            Geometry geom = (Geometry) sf.getDefaultGeometry();
+            allpoints.addAll(createSegments(geom, 500.0));
+            logger.info(geom.toString());
+        }
 
-        return new String[]{};
+        return allpoints;
+
     }
+
 
     /**
      * Get sample pixels of water features out of idaho image
@@ -261,26 +268,31 @@ public class BoundingBoxWaterMask {
      * @param idaho_id_multi idaho image id
      * @param nodesById      node
      * @return List of Double Array
-     * @throws IOException
+     * @throws IOException, description
      */
-    public static List<double[]> getSamplePixels(String idaho_id_multi, Map<Long, OsmNode> nodesById) throws IOException {
+    private List<double[]> getSamplePixels(String idaho_id_multi, List<Point> nodesById) throws IOException,
+            NullPointerException {
         // Get idaho chip
-        System.out.println("Getting sample pixels...");
+        logger.info("Getting sample pixels...");
         long start = System.currentTimeMillis();
         String baseUrl = "http://idaho.geobigdata.io/v1";
-        GBDXAuthManager gbdxAuthManager = new GBDXAuthManager();
+        ConfigurationManager gbdxAuthManager = new ConfigurationManager();
 
         String pathUrl = String.format("/chip/centroid/idaho-images/%s?", idaho_id_multi);
 
         List<double[]> pixelvalues = new ArrayList();
         // Iterate nodes to get pixel values
 
-        System.out.println("got " + nodesById.values().size() + " nodes");
-        int nodeNumber = 0;
-        for (OsmNode value : nodesById.values()) {
+        logger.info("got " + nodesById.size() + " nodes");
 
-            Double lat = value.getLatitude();
-            Double lon = value.getLongitude();
+        if (nodesById.size() == 0) {
+            throw new RuntimeException("No features found");
+        }
+        int nodeNumber = 0;
+        for (Point value : nodesById) {
+
+            Double lat = value.getY();
+            Double lon = value.getX();
 
             // Get Idaho image
             String idaho_query = String.format("lat=%s&long=%s" +
@@ -293,10 +305,10 @@ public class BoundingBoxWaterMask {
                 img = ImageIO.read(input);
                 input.close();
 
-                System.out.println("got node " + nodeNumber++);
+                logger.info("got node " + nodeNumber++);
 
             } catch (IOException e) {
-                System.out.println(e);
+                throw new RuntimeException(e);
             }
 
             // Get pixel and check to see if it's black
@@ -316,12 +328,12 @@ public class BoundingBoxWaterMask {
                 }
 
             } catch (NullPointerException e) {
-                System.out.println(e);
+                throw new RuntimeException(e);
             }
 
         }
         long end = System.currentTimeMillis();
-        System.out.println("time to sample pixels: " + (end - start) + " ms.");
+        logger.info("time to sample pixels: " + (end - start) + " ms.");
         return pixelvalues;
     }
 
@@ -331,7 +343,7 @@ public class BoundingBoxWaterMask {
      * @param sample_pixels List of Double array
      * @return List of Double array
      */
-    private static List<double[]> clusterPixels(List<double[]> sample_pixels) {
+    private List<double[]> clusterPixels(List<double[]> sample_pixels) {
         List<ClusterablePixel> clusterInput = new ArrayList<>();
 
         for (double[] pixel : sample_pixels) {
@@ -342,7 +354,7 @@ public class BoundingBoxWaterMask {
         // we use KMeans++ with 10 clusters and 10000 iterations maximum.
         // we did not specify a distance measure; the default (euclidean distance) is used.
         long start = System.currentTimeMillis();
-        System.out.println("Computing clusters...");
+        logger.info("Computing clusters...");
         KMeansPlusPlusClusterer<ClusterablePixel> clusterer = new KMeansPlusPlusClusterer<>(10, 1000);
         List<CentroidCluster<ClusterablePixel>> clusterResults = clusterer.cluster(clusterInput);
 
@@ -354,10 +366,9 @@ public class BoundingBoxWaterMask {
         List<CentroidCluster<ClusterablePixel>> three_largestclusters = clusterResults.subList(0, 3);
 
         long end = System.currentTimeMillis();
-        System.out.println("Time to compute clusters: " + (end - start) + " ms.");
+        logger.info("Time to compute clusters: " + (end - start) + " ms.");
 
         // output the clusters
-//        System.out.print("[");
         List<double[]> centroid_clusters = new ArrayList();
 
         for (int i = 0; i < three_largestclusters.size(); i++) {
@@ -365,18 +376,10 @@ public class BoundingBoxWaterMask {
             if (cluster instanceof CentroidCluster) {
                 CentroidCluster centroidCluster = (CentroidCluster) cluster;
                 double[] point = centroidCluster.getCenter().getPoint();
-                // if size of centroid cluster is >= size clusterInput * 10% then add to centroid_cluster list
-
-//                if (centroidCluster.getPoints().size() >= clusterInput.size() * 0.10) {
-//                    centroid_clusters.add(point);
-//                }
                 centroid_clusters.add(point);
 
-//                String centroid = Arrays.toString(centroidCluster.getCenter().getPoint());
-//                System.out.print(centroid);
             }
         }
-//        System.out.println(centroid_clusters.toString());
 
         return centroid_clusters;
     }
@@ -392,14 +395,15 @@ public class BoundingBoxWaterMask {
      * - threshold/ binarize, mask of land, invert, mask of water
      * overlay
      */
-    private static String RenderNode(String idaho_id, String spectral_angle_signatures, String overlapping_wkt) throws
-            ParserConfigurationException, ParseException, IOException {
+    private String RenderNode(String idaho_id, String spectral_angle_signatures, String overlapping_wkt) throws
+            ParserConfigurationException, ParseException, IOException, URISyntaxException {
+
         ObjectMapper om = new ObjectMapper();
 
-        System.out.println("reading and updating graph...");
-        File file = new File("graph.json");
+        logger.info("reading and updating graph...");
+        InputStream is = this.getClass().getClassLoader().getResourceAsStream("graph.json");
 
-        IPEGraph graph = om.readValue(file, IPEGraph.class);
+        IPEGraph graph = om.readValue(is, IPEGraph.class);
 
         //update idaho id
         Map<String, String> idaho_read_parameters = new HashMap<>();
@@ -433,33 +437,41 @@ public class BoundingBoxWaterMask {
             }
         }
 
-        RenderedImage image = graph.getVertexAsRenderedOp("Invert_a2hsnk");
-
-//        ParameterBlock pbC = new ParameterBlock( );
-//        pbC.addSource(image);
-//        pbC.add(9311f); //upper left x
-//        pbC.add(5652f); //upper left y
-//        pbC.add(5000f);
-//        pbC.add(5000f);
-//        RenderedImage crop = JAI.create("Crop", pbC);
-
-        System.out.println(image.getMinX() + " " + image.getMinY() + "  " + image.getWidth() + " " + image.getHeight());
-
-        // Write tif
-        System.out.println("writing tif...");
         long start = System.currentTimeMillis();
-        ImageIO.write(image, "TIF", new File("baton_rouge_wv03_clouds_trees.tif"));
-//        ImageIO.write(image, "TIF", new File("/tmp/file.tif"));
-        long end = System.currentTimeMillis();
-        System.out.println("time to write: " + (end - start) + " ms.");
 
-//        // write png
-//        System.out.println("writing png..");
-//        long start_png = System.currentTimeMillis();
-//        ImageIO.write(image, "png", new File("/tmp/file.png"));
-//        long end_png = System.currentTimeMillis();
-//        System.out.println("tie to write: " + (end_png - start_png) + " ms.");
+        String graph_string = new ObjectMapper().writeValueAsString(graph);
+        logger.info(graph_string);
 
-        return "file.png";
+        // register graph
+        ConfigurationManager gbdxAuthManager = new ConfigurationManager();
+        HttpPost registerGraphRequest = new HttpPost("http://idahoapi.geobigdata.io/v1/graph");
+        registerGraphRequest.setHeader("Authorization", "Bearer " + gbdxAuthManager.getAccessToken());
+        registerGraphRequest.setHeader("Content-type", "application/json");
+        StringEntity graphFileStringEntity = new StringEntity(graph_string);
+        registerGraphRequest.setEntity(graphFileStringEntity);
+
+        HttpResponse registerGraphResponse = HttpClientBuilder.create().build().execute(registerGraphRequest);
+
+        String graphId = EntityUtils.toString(registerGraphResponse.getEntity());
+        logger.info(graphId);
+//        String idahoUrl = "http://idahoapitest.geobigdata.io/v1/tile/virtual-idaho/" + graphId + "/Invert/10/10.png";
+//
+//        HttpGet imageRequest = new HttpGet(idahoUrl);
+//        imageRequest.setHeader("Authorization", "Bearer " + gbdxAuthManager.getAccessToken());
+//        HttpResponse imageResponse = HttpClientBuilder.create().build().execute(imageRequest);
+//
+//        InputStream imageStream = imageResponse.getEntity().getContent();
+//        BufferedImage img = ImageIO.read(imageStream);
+//
+//        if (img == null){
+//            throw new RuntimeException("img is null");
+//        }
+//
+//        logger.info("writing tif...");
+//        ImageIO.write(img, "png", new File("/tmp/file.png"));
+//        long end = System.currentTimeMillis();
+//        logger.info("time to write: " + (end - start) + " ms.");
+
+        return graphId;
     }
 }

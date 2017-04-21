@@ -1,5 +1,4 @@
 {
-  "id": "84d957c1-2974-42c7-be69-2120b11091b4",
   "edges": [
     {
       "id": "e0be7536-1889-44d7-880b-b1f4c1395934",
@@ -71,7 +70,7 @@
       "id": "a39f880c-a5b3-4ea0-83c7-c964801c6fe3",
       "index": 1,
       "source": "Binarize_kerg68",
-      "destination": "Invert_a2hsnk"
+      "destination": "Invert"
     }
   ],
   "nodes": [
@@ -146,7 +145,7 @@
       "parameters": {}
     },
     {
-      "id": "Invert_a2hsnk",
+      "id": "Invert",
       "operator": "Invert",
       "parameters": {}
     }

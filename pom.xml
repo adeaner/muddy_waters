@@ -27,17 +27,6 @@
             <version>1.13</version>
         </dependency>
 
-        <dependency>
-            <groupId>de.topobyte</groupId>
-            <artifactId>osm4j-core</artifactId>
-            <version>0.0.18</version>
-        </dependency>
-
-        <dependency>
-            <groupId>de.topobyte</groupId>
-            <artifactId>osm4j-xml</artifactId>
-            <version>0.0.3</version>
-        </dependency>
         <!-- Java EE 7 dependency -->
         <dependency>
             <groupId>javax</groupId>
@@ -50,7 +39,7 @@
         <dependency>
             <groupId>com.digitalglobe.gbdx.tools</groupId>
             <artifactId>gbdxtools4j</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.7-SNAPSHOT</version>
         </dependency>
 
         <!-- http://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
@@ -82,12 +71,12 @@
             <version>2.7</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.21</version>
-        </dependency>
+        <!--&lt;!&ndash; https://mvnrepository.com/artifact/org.slf4j/slf4j-api &ndash;&gt;-->
+        <!--<dependency>-->
+            <!--<groupId>org.slf4j</groupId>-->
+            <!--<artifactId>slf4j-api</artifactId>-->
+            <!--<version>1.7.21</version>-->
+        <!--</dependency>-->
 
         <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
         <dependency>
@@ -123,12 +112,6 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
-        <dependency>
-            <groupId>io.geobigdata.idaho</groupId>
-            <artifactId>idaho-libraries</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-
         <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-xml -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -143,21 +126,34 @@
             <version>1.1.1</version>
         </dependency>
 
+        <dependency>
+            <groupId>de.grundid.opendatalab</groupId>
+            <artifactId>geojson-jackson</artifactId>
+            <version>1.8</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.geotools/gt-main -->
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-geojson</artifactId>
+            <version>17.0</version>
+        </dependency>
+
+
 
     </dependencies>
 
     <repositories>
         <repository>
-            <id>topobyte</id>
-            <name>TopoByte</name>
-            <url>http://mvn.topobyte.de
-            </url>
-        </repository>
-
-        <repository>
             <id>osgeo</id>
             <name>Open Source Geospatial Foundation Repository</name>
             <url>http://download.osgeo.org/webdav/geotools/</url>
+        </repository>
+
+        <repository>
+            <id>boundless</id>
+            <name>boundless</name>
+            <url>http://repo.boundlessgeo.com/main/</url>
         </repository>
 
     </repositories>

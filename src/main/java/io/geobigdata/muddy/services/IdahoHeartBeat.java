@@ -9,24 +9,20 @@ import javax.ws.rs.core.Response;
 
 /**
  * Provides a simple heartbeat.
- *
  */
 @Path("/v1")
 public class IdahoHeartBeat {
 
-	/**
-	 * Get the heartbeat.  Basically if you can hit this "service"
-	 * then the machine and process are up.
-	 * 
-	 * @return a HTTP 200 with a simple "OK" text response packet.
-	 * 
-	 */
-	@Path("/heartbeat")
-    @Produces({ MediaType.TEXT_PLAIN })
+    /**
+     * Get the heartbeat.  Basically if you can hit this "service"
+     * then the machine and process are up.
+     *
+     * @return a HTTP 200 with a simple "OK" text response packet.
+     */
+    @Path("/heartbeat")
+    @Produces({MediaType.TEXT_PLAIN})
     @GET
-	public Response getHeartBeat() {
-		return Response.ok("OK").build();
-	}
+    public Response getHeartBeat() {
+        return Response.ok("OK").build();
+    }
 }
-
-

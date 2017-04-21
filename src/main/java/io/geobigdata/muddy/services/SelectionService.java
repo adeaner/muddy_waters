@@ -8,7 +8,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
-import com.digitalglobe.gbdx.tools.auth.GBDXAuthManager;
+import com.digitalglobe.gbdx.tools.config.ConfigurationManager;
 import io.geobigdata.muddy.BoundingBoxWaterMask;
 import io.geobigdata.muddy.services.logging.Logged;
 import io.geobigdata.muddy.services.model.BoundingBox;
@@ -28,20 +28,19 @@ public class SelectionService {
     @Path("/getToken")
     @Produces("application/json")
     public Response getToken() throws WebApplicationException {
-        GBDXAuthManager gbdxAuthManager = new GBDXAuthManager();
+        ConfigurationManager gbdxAuthManager = new ConfigurationManager();
 
         return Response.ok("{\"token\": \"" + gbdxAuthManager.getAccessToken() + "\"}").build();
     }
 
-
-    @Logged  // this request is logged
+    @Logged
     @POST
     @Path("/")
     @Produces("application/json")
     @Consumes("application/json")
-    public Response saveBoundingBox( BoundingBox boundingBox) throws WebApplicationException {
+    public Response waterMaskFromBoundingBox(BoundingBox boundingBox) throws WebApplicationException {
 
-        logger.info("got bounding box of " + boundingBox.toString() );
+        logger.info("got bounding box of " + boundingBox.toString());
 
         Double[] bbox = new Double[4];
         bbox[0] = boundingBox.getUpperLeftLatitude();
@@ -49,33 +48,21 @@ public class SelectionService {
         bbox[2] = boundingBox.getLowerRightLatitude();
         bbox[3] = boundingBox.getLowerRightLongitude();
 
-        String idahoId = "blah";
-       try {
-            BoundingBoxWaterMask.getOverlay(bbox);
-        }
-        catch( Exception e ) {
-            return Response.serverError().build();
+        String graphId;
+        try {
+            idahoImage img = new idahoImage();
+            String wkt = String.format("POLYGON((%2$f %1$f, %4$f %1$f, %4$f %3$f, %2$f %3$f, %2$f %1$f))", bbox[0], bbox[1], bbox[2], bbox[3]);
+            img.setByWKT(wkt);
+//            img.setByIdahoImageId("befcf8eb-02d3-4bb6-a367-d57ee457d5c2");
+
+            BoundingBoxWaterMask bb = new BoundingBoxWaterMask();
+//            graphId = "b93b20e9-2147-4768-a30b-5718b70ed98b";
+            graphId = bb.getWaterMask(img, wkt);
+        } catch (Exception e) {
+            return Response.serverError().entity("{\"errorMessage\": \"" + e + "\"}").build();
         }
 
-        return Response.ok("{\"idahoId\":\"" + idahoId + "\"}").build();
+        return Response.ok("{\"graphId\": \"" + graphId + "\", \"node\": \"Invert\"}").build();
     }
-
-
-
-
-        // "timestamp" -> "2016-12-31T00:00:00.000Z"
-
-  /*      private class ResponseSorter implements Comparator<Record> {
-            @Override
-            public int compare(Record first, Record second) {
-                ZonedDateTime firstTimestamp = ZonedDateTime.parse(first.getProperties().get("timestamp"),
-                                                    DateTimeFormatter.ISO_ZONED_DATE_TIME.withZone(ZoneId.systemDefault()));
-                ZonedDateTime secondTimestamp = ZonedDateTime.parse(second.getProperties().get("timestamp"),
-                        DateTimeFormatter.ISO_ZONED_DATE_TIME.withZone(ZoneId.systemDefault()));
-
-                return firstTimestamp.compareTo(secondTimestamp);
-            }
-
-        } */
 
 }

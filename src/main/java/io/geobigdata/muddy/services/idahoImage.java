@@ -1,32 +1,31 @@
 package io.geobigdata.muddy.services;
 
-import com.digitalglobe.gbdx.tools.auth.GBDXAuthManager;
 import com.digitalglobe.gbdx.tools.catalog.CatalogManager;
 import com.digitalglobe.gbdx.tools.catalog.model.SearchRequest;
 import com.digitalglobe.gbdx.tools.catalog.model.SearchResponse;
+import com.digitalglobe.gbdx.tools.catalogv2.CatalogManagerV2;
+import com.digitalglobe.gbdx.tools.catalogv2.model.RecordV2;
+import com.digitalglobe.gbdx.tools.catalogv2.model.SearchResponseV2;
+import com.digitalglobe.gbdx.tools.config.ConfigurationManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTReader;
 import io.geobigdata.idaho.image.ImageMetadata;
+import org.opengis.referencing.FactoryException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Created by DGashleydeaner on 25/1/17.
- */
-public class idahoImage { //extends ImageMetadata{
+public class idahoImage {
 
     public ImageMetadata metadata;
-
-//    public idahoImage() {
-//        super();
-//    }
 
     public void setByIdahoImageId(String image_id) throws IOException {
 
@@ -35,7 +34,7 @@ public class idahoImage { //extends ImageMetadata{
         // Get Idaho image
 
         ObjectMapper jacksonMapper = new ObjectMapper();
-        GBDXAuthManager gbdxAuthManager = new GBDXAuthManager();
+        ConfigurationManager gbdxAuthManager = new ConfigurationManager();
 
         URL idaho_url = new URL(url);
         HttpURLConnection idaho_url_connection = (HttpURLConnection) idaho_url.openConnection();
@@ -46,7 +45,6 @@ public class idahoImage { //extends ImageMetadata{
 
         metadata = jacksonMapper.readValue(imgJSON, ImageMetadata.class);
 
-//        super(metadata);
 
     }
 
@@ -94,7 +92,8 @@ public class idahoImage { //extends ImageMetadata{
         Geometry geometry = reader.read(this.metadata.getImageBoundsWGS84());
         geometry.setSRID(4326);
 
-        return new Double[]{geometry.getCoordinates()[0].y, geometry.getCoordinates()[0].x,
-                geometry.getCoordinates()[2].y, geometry.getCoordinates()[2].x};
+        // this is buggy somehow...
+        return new Double[]{geometry.getCoordinates()[2].y, geometry.getCoordinates()[0].x,
+                geometry.getCoordinates()[0].y, geometry.getCoordinates()[2].x};
     }
 }
